@@ -9,4 +9,6 @@ internal class DatabaseReaderConfig
     public int CommandTimeoutSeconds { get; set; } = 30;
     public string? OutputPrefix { get; set; }
     public bool RequireRow { get; set; } = false;
+    public bool MultiRow { get; set; } = false;
+    public string RowsOutputKey { get; set; } = "db_rows";
 }

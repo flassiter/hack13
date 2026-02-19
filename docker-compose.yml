@@ -1,6 +1,23 @@
 version: "3.9"
 
 services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: hack13
+      POSTGRES_USER: hack13
+      POSTGRES_PASSWORD: hack13password
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./db/init:/docker-entrypoint-initdb.d:ro
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hack13 -d hack13"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
   mock-server:
     build:
       context: .
@@ -26,12 +43,21 @@ services:
       - Workflow__EnvironmentSettings__host=mock-server
       - Workflow__EnvironmentSettings__screen_catalog_path=/app/configs/screen-catalog
       - Workflow__EnvironmentSettings__customer_email=demo@example.com
+      - Workflow__EnvironmentSettings__db_host=postgres
+      - Workflow__EnvironmentSettings__db_port=5432
+      - Workflow__EnvironmentSettings__db_name=hack13
+      - Workflow__EnvironmentSettings__db_user=hack13
+      - Workflow__EnvironmentSettings__db_password=hack13password
     volumes:
       - ./configs:/app/configs:ro
       - ./output:/app/output
     depends_on:
-      - mock-server
-      - smtp
+      mock-server:
+        condition: service_started
+      smtp:
+        condition: service_started
+      postgres:
+        condition: service_healthy
     ports:
       - "5000:5000"
 
@@ -45,3 +71,6 @@ services:
       - api
     ports:
       - "8080:80"
+
+volumes:
+  postgres_data:

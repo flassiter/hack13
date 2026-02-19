@@ -43,6 +43,22 @@ public sealed class WorkflowLoader
     {
         foreach (var step in workflow.Steps)
         {
+            if (string.Equals(step.ComponentType, "foreach", StringComparison.OrdinalIgnoreCase))
+            {
+                foreach (var subStep in step.SubSteps ?? new List<WorkflowStep>())
+                {
+                    if (!_registry.IsRegistered(subStep.ComponentType))
+                        throw new InvalidOperationException(
+                            $"Sub-step '{subStep.StepName}' in foreach step '{step.StepName}' references unregistered component type '{subStep.ComponentType}'.");
+
+                    var subPath = ResolveComponentConfigPath(subStep.ComponentConfig, dataDictionary, workflowPath);
+                    if (!File.Exists(subPath))
+                        throw new FileNotFoundException(
+                            $"Sub-step '{subStep.StepName}' component config file not found: {subPath}");
+                }
+                continue;
+            }
+
             if (!_registry.IsRegistered(step.ComponentType))
                 throw new InvalidOperationException(
                     $"Step '{step.StepName}' references unregistered component type '{step.ComponentType}'.");
@@ -87,8 +103,32 @@ public sealed class WorkflowLoader
                 throw new InvalidOperationException($"Duplicate step_name detected: '{step.StepName}'.");
             if (string.IsNullOrWhiteSpace(step.ComponentType))
                 throw new InvalidOperationException($"Step '{step.StepName}' must define component_type.");
-            if (string.IsNullOrWhiteSpace(step.ComponentConfig))
-                throw new InvalidOperationException($"Step '{step.StepName}' must define component_config.");
+
+            if (string.Equals(step.ComponentType, "foreach", StringComparison.OrdinalIgnoreCase))
+            {
+                if (step.Foreach == null)
+                    throw new InvalidOperationException($"Foreach step '{step.StepName}' must define a 'foreach' config block.");
+                if (step.SubSteps == null || step.SubSteps.Count == 0)
+                    throw new InvalidOperationException($"Foreach step '{step.StepName}' must define at least one sub_step.");
+
+                var subStepNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                foreach (var subStep in step.SubSteps)
+                {
+                    if (string.IsNullOrWhiteSpace(subStep.StepName))
+                        throw new InvalidOperationException($"Each sub-step in foreach step '{step.StepName}' must define step_name.");
+                    if (!subStepNames.Add(subStep.StepName))
+                        throw new InvalidOperationException($"Duplicate sub-step name '{subStep.StepName}' in foreach step '{step.StepName}'.");
+                    if (string.IsNullOrWhiteSpace(subStep.ComponentType))
+                        throw new InvalidOperationException($"Sub-step '{subStep.StepName}' must define component_type.");
+                    if (string.IsNullOrWhiteSpace(subStep.ComponentConfig))
+                        throw new InvalidOperationException($"Sub-step '{subStep.StepName}' must define component_config.");
+                }
+            }
+            else
+            {
+                if (string.IsNullOrWhiteSpace(step.ComponentConfig))
+                    throw new InvalidOperationException($"Step '{step.StepName}' must define component_config.");
+            }
         }
     }
 }

@@ -348,4 +348,162 @@ public class DatabaseReaderComponentTests : IDisposable
         Assert.Contains("price", result.OutputData.Keys);
         Assert.Contains("db_row_count", result.OutputData.Keys);
     }
+
+    // -------------------------------------------------------------------------
+    // 13. multi_row: true serializes all rows into a JSON array under rows_output_key
+    // -------------------------------------------------------------------------
+
+    [Fact]
+    public async Task MultiRow_True_SerializesAllRowsToJsonKey()
+    {
+        Execute("CREATE TABLE IF NOT EXISTS batch (id TEXT, name TEXT)");
+        Execute("INSERT INTO batch VALUES ('1', 'Alpha')");
+        Execute("INSERT INTO batch VALUES ('2', 'Beta')");
+        Execute("INSERT INTO batch VALUES ('3', 'Gamma')");
+
+        var component = new DatabaseReaderComponent();
+        var config = MakeConfig($$"""
+            {
+              "provider": "sqlite",
+              "connection_string": "{{_connectionString}}",
+              "query": "SELECT id, name FROM batch ORDER BY id",
+              "multi_row": true
+            }
+            """);
+        var data = new Dictionary<string, string>();
+
+        var result = await component.ExecuteAsync(config, data);
+
+        Assert.Equal(ComponentStatus.Success, result.Status);
+        Assert.Equal("3", data["db_row_count"]);
+
+        var rows = System.Text.Json.JsonSerializer.Deserialize<List<Dictionary<string, string>>>(data["db_rows"])!;
+        Assert.Equal(3, rows.Count);
+        Assert.Equal("1", rows[0]["id"]);
+        Assert.Equal("Alpha", rows[0]["name"]);
+        Assert.Equal("2", rows[1]["id"]);
+        Assert.Equal("3", rows[2]["id"]);
+
+        // No individual column keys written to data dictionary
+        Assert.DoesNotContain("id", data.Keys);
+        Assert.DoesNotContain("name", data.Keys);
+    }
+
+    // -------------------------------------------------------------------------
+    // 14. multi_row: true, no rows, require_row: false → success with empty array
+    // -------------------------------------------------------------------------
+
+    [Fact]
+    public async Task MultiRow_True_NoRows_RequireRow_False_ReturnsSuccess()
+    {
+        Execute("CREATE TABLE IF NOT EXISTS empty_table (col TEXT)");
+
+        var component = new DatabaseReaderComponent();
+        var config = MakeConfig($$"""
+            {
+              "provider": "sqlite",
+              "connection_string": "{{_connectionString}}",
+              "query": "SELECT col FROM empty_table",
+              "multi_row": true,
+              "require_row": false
+            }
+            """);
+        var data = new Dictionary<string, string>();
+
+        var result = await component.ExecuteAsync(config, data);
+
+        Assert.Equal(ComponentStatus.Success, result.Status);
+        Assert.Equal("0", data["db_row_count"]);
+
+        var rows = System.Text.Json.JsonSerializer.Deserialize<List<Dictionary<string, string>>>(data["db_rows"])!;
+        Assert.Empty(rows);
+    }
+
+    // -------------------------------------------------------------------------
+    // 15. multi_row: true, no rows, require_row: true → NO_ROWS_RETURNED
+    // -------------------------------------------------------------------------
+
+    [Fact]
+    public async Task MultiRow_True_NoRows_RequireRow_True_ReturnsFailure()
+    {
+        Execute("CREATE TABLE IF NOT EXISTS locked_table (col TEXT)");
+
+        var component = new DatabaseReaderComponent();
+        var config = MakeConfig($$"""
+            {
+              "provider": "sqlite",
+              "connection_string": "{{_connectionString}}",
+              "query": "SELECT col FROM locked_table",
+              "multi_row": true,
+              "require_row": true
+            }
+            """);
+        var data = new Dictionary<string, string>();
+
+        var result = await component.ExecuteAsync(config, data);
+
+        Assert.Equal(ComponentStatus.Failure, result.Status);
+        Assert.Equal("NO_ROWS_RETURNED", result.Error!.ErrorCode);
+    }
+
+    // -------------------------------------------------------------------------
+    // 16. multi_row: true, output_prefix applied to all column keys in every row
+    // -------------------------------------------------------------------------
+
+    [Fact]
+    public async Task MultiRow_True_OutputPrefix_AppliedToAllRows()
+    {
+        Execute("CREATE TABLE IF NOT EXISTS prefixed (val TEXT)");
+        Execute("INSERT INTO prefixed VALUES ('X')");
+        Execute("INSERT INTO prefixed VALUES ('Y')");
+
+        var component = new DatabaseReaderComponent();
+        var config = MakeConfig($$"""
+            {
+              "provider": "sqlite",
+              "connection_string": "{{_connectionString}}",
+              "query": "SELECT val FROM prefixed ORDER BY val",
+              "multi_row": true,
+              "output_prefix": "row_"
+            }
+            """);
+        var data = new Dictionary<string, string>();
+
+        var result = await component.ExecuteAsync(config, data);
+
+        Assert.Equal(ComponentStatus.Success, result.Status);
+        var rows = System.Text.Json.JsonSerializer.Deserialize<List<Dictionary<string, string>>>(data["db_rows"])!;
+        Assert.Equal(2, rows.Count);
+        Assert.True(rows[0].ContainsKey("row_val"));
+        Assert.False(rows[0].ContainsKey("val"));
+    }
+
+    // -------------------------------------------------------------------------
+    // 17. multi_row: true, custom rows_output_key stored under the specified key
+    // -------------------------------------------------------------------------
+
+    [Fact]
+    public async Task MultiRow_True_CustomRowsOutputKey_UsesSpecifiedKey()
+    {
+        Execute("CREATE TABLE IF NOT EXISTS keyed (n TEXT)");
+        Execute("INSERT INTO keyed VALUES ('1')");
+
+        var component = new DatabaseReaderComponent();
+        var config = MakeConfig($$"""
+            {
+              "provider": "sqlite",
+              "connection_string": "{{_connectionString}}",
+              "query": "SELECT n FROM keyed",
+              "multi_row": true,
+              "rows_output_key": "my_loans"
+            }
+            """);
+        var data = new Dictionary<string, string>();
+
+        var result = await component.ExecuteAsync(config, data);
+
+        Assert.Equal(ComponentStatus.Success, result.Status);
+        Assert.Contains("my_loans", data.Keys);
+        Assert.DoesNotContain("db_rows", data.Keys);
+    }
 }

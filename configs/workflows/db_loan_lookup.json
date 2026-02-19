@@ -1,0 +1,33 @@
+{
+  "workflow_id": "db_loan_lookup",
+  "workflow_version": "1.0",
+  "description": "Query loans from the database by type, then iterate over each row and process it",
+  "initial_parameters": ["filter_loan_type"],
+  "steps": [
+    {
+      "step_name": "query_loans",
+      "component_type": "database_reader",
+      "component_config": "../components/db_loan_lookup.json",
+      "on_failure": "abort",
+      "retry": { "max_attempts": 2, "backoff_seconds": 1 }
+    },
+    {
+      "step_name": "process_each_loan",
+      "component_type": "foreach",
+      "foreach": {
+        "rows_key": "db_rows",
+        "row_prefix": "loan_"
+      },
+      "on_failure": "log_and_continue",
+      "sub_steps": [
+        {
+          "step_name": "lookup_escrow_data",
+          "component_type": "green_screen_connector",
+          "component_config": "../components/escrow_lookup.json",
+          "on_failure": "abort",
+          "retry": { "max_attempts": 2, "backoff_seconds": 1 }
+        }
+      ]
+    }
+  ]
+}

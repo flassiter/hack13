@@ -20,4 +20,13 @@ public class StepExecutionSummary
     public ComponentStatus Status { get; set; }
     public long DurationMs { get; set; }
     public ComponentError? Error { get; set; }
+    public List<ForeachIterationSummary>? Iterations { get; set; }
+}
+
+public class ForeachIterationSummary
+{
+    public int RowIndex { get; set; }
+    public ComponentStatus Status { get; set; }
+    public long DurationMs { get; set; }
+    public List<StepExecutionSummary> Steps { get; set; } = new();
 }
