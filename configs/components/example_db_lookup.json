@@ -1,0 +1,17 @@
+{
+  "component_type": "database_reader",
+  "component_version": "1.0",
+  "description": "Look up loan details from the database using loan number from the data dictionary",
+  "config": {
+    "provider": "sqlserver",
+    "connection_string": "Server={{db_host}};Database={{db_name}};User Id={{db_user}};Password={{db_password}};TrustServerCertificate=True;ConnectTimeout=10;",
+    "query": "SELECT loan_number, borrower_name, current_balance, escrow_balance, property_address FROM loans WHERE loan_number = @loan_number AND status = @status",
+    "parameters": {
+      "loan_number": "{{loan_number}}",
+      "status": "{{loan_status}}"
+    },
+    "command_timeout_seconds": 30,
+    "output_prefix": "db_",
+    "require_row": true
+  }
+}

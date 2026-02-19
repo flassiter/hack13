@@ -1,5 +1,6 @@
 using Hack13.Calculator;
 using Hack13.Contracts.Interfaces;
+using Hack13.DatabaseReader;
 using Hack13.DecisionEngine;
 using Hack13.EmailSender;
 using Hack13.TerminalClient;
@@ -42,6 +43,7 @@ public sealed class ComponentRegistry
             .Register("calculate", () => new CalculatorComponent())
             .Register("decision", () => new DecisionEngineComponent())
             .Register("pdf_generator", () => new PdfGeneratorComponent())
-            .Register("email_sender", () => new EmailSenderComponent(emailTransport, envConfig));
+            .Register("email_sender", () => new EmailSenderComponent(emailTransport, envConfig))
+            .Register("database_reader", () => new DatabaseReaderComponent());
     }
 }

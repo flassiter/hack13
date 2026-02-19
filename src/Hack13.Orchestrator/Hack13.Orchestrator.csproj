@@ -7,6 +7,7 @@
     <ProjectReference Include="..\Hack13.EmailSender\Hack13.EmailSender.csproj" />
     <ProjectReference Include="..\Hack13.TerminalClient\Hack13.TerminalClient.csproj" />
     <ProjectReference Include="..\Hack13.PdfGenerator\Hack13.PdfGenerator.csproj" />
+    <ProjectReference Include="..\Hack13.DatabaseReader\Hack13.DatabaseReader.csproj" />
   </ItemGroup>
 
   <ItemGroup>
