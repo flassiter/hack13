@@ -1,4 +1,4 @@
-# RPA POC
+# Hack13
 
 A proof-of-concept Robotic Process Automation engine built on .NET 8. The system connects to legacy green-screen (TN5250/AS400) systems, extracts data through scripted workflows, and feeds it into downstream processing pipelines.
 
