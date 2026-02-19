@@ -203,7 +203,7 @@ export function App() {
   return (
     <main className="page">
       <section className="panel">
-        <h1>Escrow Statement Demo</h1>
+        <h1>Component Workflow Demo</h1>
         <p>Run the workflow, observe step outcomes, then verify PDF/email results.</p>
 
         <form onSubmit={onSubmit} className="form">
