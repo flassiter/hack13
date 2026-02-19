@@ -1,0 +1,77 @@
+{
+  "initial_screen": "sign_on",
+  "credentials": [
+    { "user_id": "TESTUSER", "password": "TEST1234" },
+    { "user_id": "ADMIN", "password": "ADMIN123" },
+    { "user_id": "RPA", "password": "RPA5250" }
+  ],
+  "transitions": [
+    {
+      "source_screen": "sign_on",
+      "aid_key": "Enter",
+      "conditions": { "user_id": "not_empty", "password": "not_empty" },
+      "target_screen": "loan_inquiry",
+      "validation": "credentials"
+    },
+    {
+      "source_screen": "sign_on",
+      "aid_key": "Enter",
+      "conditions": {},
+      "target_screen": "sign_on",
+      "error_message": "User ID and password are required"
+    },
+
+    {
+      "source_screen": "loan_inquiry",
+      "aid_key": "Enter",
+      "conditions": { "loan_number": "not_empty" },
+      "target_screen": "loan_details",
+      "validation": "loan_exists"
+    },
+    {
+      "source_screen": "loan_inquiry",
+      "aid_key": "Enter",
+      "conditions": {},
+      "target_screen": "loan_inquiry",
+      "error_message": "Loan number is required"
+    },
+    {
+      "source_screen": "loan_inquiry",
+      "aid_key": "F3",
+      "conditions": {},
+      "target_screen": "sign_on"
+    },
+
+    {
+      "source_screen": "loan_details",
+      "aid_key": "F6",
+      "conditions": {},
+      "target_screen": "escrow_analysis"
+    },
+    {
+      "source_screen": "loan_details",
+      "aid_key": "F12",
+      "conditions": {},
+      "target_screen": "loan_inquiry"
+    },
+    {
+      "source_screen": "loan_details",
+      "aid_key": "F3",
+      "conditions": {},
+      "target_screen": "loan_inquiry"
+    },
+
+    {
+      "source_screen": "escrow_analysis",
+      "aid_key": "F12",
+      "conditions": {},
+      "target_screen": "loan_details"
+    },
+    {
+      "source_screen": "escrow_analysis",
+      "aid_key": "F3",
+      "conditions": {},
+      "target_screen": "loan_inquiry"
+    }
+  ]
+}

@@ -1,0 +1,47 @@
+{
+  "screen_id": "escrow_analysis",
+  "identifier": {
+    "row": 1,
+    "col": 23,
+    "expected_text": "Escrow Analysis"
+  },
+  "fields": [
+    { "name": "loan_number",       "type": "display", "row": 3,  "col": 35, "length": 10 },
+    { "name": "borrower_name",     "type": "display", "row": 4,  "col": 35, "length": 30 },
+    { "name": "escrow_balance",    "type": "display", "row": 6,  "col": 35, "length": 15, "attributes": "highlighted" },
+    { "name": "escrow_payment",    "type": "display", "row": 7,  "col": 35, "length": 15 },
+    { "name": "required_reserve",  "type": "display", "row": 8,  "col": 35, "length": 15 },
+    { "name": "shortage_amount",   "type": "display", "row": 10, "col": 35, "length": 15, "attributes": "highlighted" },
+    { "name": "surplus_amount",    "type": "display", "row": 11, "col": 35, "length": 15, "attributes": "highlighted" },
+    { "name": "escrow_status",     "type": "display", "row": 12, "col": 35, "length": 15, "attributes": "highlighted" },
+    { "name": "tax_amount",        "type": "display", "row": 14, "col": 35, "length": 15 },
+    { "name": "hazard_insurance",  "type": "display", "row": 15, "col": 35, "length": 15 },
+    { "name": "flood_insurance",   "type": "display", "row": 16, "col": 35, "length": 15 },
+    { "name": "mortgage_insurance","type": "display", "row": 17, "col": 35, "length": 15 },
+    { "name": "last_analysis_date","type": "display", "row": 19, "col": 35, "length": 10 },
+    { "name": "next_analysis_date","type": "display", "row": 20, "col": 35, "length": 10 },
+    { "name": "projected_balance", "type": "display", "row": 21, "col": 35, "length": 15 },
+    { "name": "projected_shortage","type": "display", "row": 22, "col": 35, "length": 15 }
+  ],
+  "static_text": [
+    { "row": 1,  "col": 23, "text": "Escrow Analysis" },
+    { "row": 1,  "col": 60, "text": "ESCRANL" },
+    { "row": 3,  "col": 5,  "text": "Loan Number  . . . . . . . :" },
+    { "row": 4,  "col": 5,  "text": "Borrower . . . . . . . . . :" },
+    { "row": 6,  "col": 5,  "text": "Escrow Balance . . . . . . :" },
+    { "row": 7,  "col": 5,  "text": "Monthly Escrow Payment . . :" },
+    { "row": 8,  "col": 5,  "text": "Required Reserve . . . . . :" },
+    { "row": 10, "col": 5,  "text": "Shortage Amount  . . . . . :" },
+    { "row": 11, "col": 5,  "text": "Surplus Amount . . . . . . :" },
+    { "row": 12, "col": 5,  "text": "Escrow Status  . . . . . . :" },
+    { "row": 14, "col": 5,  "text": "Annual Tax . . . . . . . . :" },
+    { "row": 15, "col": 5,  "text": "Hazard Insurance . . . . . :" },
+    { "row": 16, "col": 5,  "text": "Flood Insurance  . . . . . :" },
+    { "row": 17, "col": 5,  "text": "Mortgage Insurance . . . . :" },
+    { "row": 19, "col": 5,  "text": "Last Analysis Date . . . . :" },
+    { "row": 20, "col": 5,  "text": "Next Analysis Date . . . . :" },
+    { "row": 21, "col": 5,  "text": "Projected Balance  . . . . :" },
+    { "row": 22, "col": 5,  "text": "Projected Shortage . . . . :" },
+    { "row": 23, "col": 5,  "text": "F3=Exit   F12=Previous" }
+  ]
+}

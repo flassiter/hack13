@@ -1,0 +1,54 @@
+# .NET build outputs
+bin/
+obj/
+*.user
+*.suo
+*.userprefs
+.vs/
+_ReSharper*/
+*.ReSharper
+*.DotSettings.user
+
+# NuGet
+*.nupkg
+.nuget/
+packages/
+!**/packages/repositories.config
+
+# ASP.NET
+wwwroot/dist/
+
+# Logs and temp files
+*.log
+*.tmp
+*.temp
+
+# Secrets and environment
+*.env
+appsettings.Production.json
+appsettings.Local.json
+secrets.json
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Node (frontend)
+node_modules/
+frontend/build/
+frontend/dist/
+frontend/.env
+
+# Test results
+TestResults/
+coverage/
+*.coverage
+*.coveragexml
+
+# PDF test outputs (don't commit generated files)
+test-data/output/
+
+# Project planning and archive
+plan/
+archive/

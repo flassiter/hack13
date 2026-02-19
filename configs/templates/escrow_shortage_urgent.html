@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Escrow Shortage Notice — Loan {{loan_number}}</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 10.5pt;
+      color: #1a1a1a;
+      line-height: 1.45;
+      background: #fff;
+    }
+
+    .page {
+      width: 8.5in;
+      min-height: 11in;
+      padding: 0.75in 1in;
+    }
+
+    /* ── Header ───────────────────────────────────────────── */
+    .header {
+      border-bottom: 3px solid #8b0000;
+      padding-bottom: 12px;
+      margin-bottom: 18px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+    }
+
+    .company-block .company-name {
+      font-size: 17pt;
+      font-weight: bold;
+      color: #8b0000;
+      letter-spacing: 0.5px;
+    }
+
+    .company-block .company-tag {
+      font-size: 9pt;
+      color: #555;
+      margin-top: 2px;
+    }
+
+    .company-address {
+      font-size: 9pt;
+      color: #555;
+      text-align: right;
+    }
+
+    /* ── Notice banner ────────────────────────────────────── */
+    .notice-banner {
+      background: #8b0000;
+      color: #fff;
+      text-align: center;
+      padding: 8px 16px;
+      margin-bottom: 18px;
+      border-radius: 2px;
+    }
+
+    .notice-banner h1 {
+      font-size: 13pt;
+      font-weight: bold;
+      letter-spacing: 0.5px;
+    }
+
+    .notice-banner .notice-sub {
+      font-size: 9pt;
+      margin-top: 2px;
+      opacity: 0.9;
+    }
+
+    /* ── Statement meta ───────────────────────────────────── */
+    .meta-row {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 18px;
+      font-size: 9.5pt;
+    }
+
+    .meta-row .label { color: #555; }
+    .meta-row .value { font-weight: bold; }
+
+    /* ── Recipient block ──────────────────────────────────── */
+    .recipient-block {
+      margin-bottom: 18px;
+      font-size: 10.5pt;
+    }
+
+    .recipient-block .name { font-weight: bold; }
+
+    /* ── Salutation & body ────────────────────────────────── */
+    .salutation {
+      margin-bottom: 10px;
+    }
+
+    .body-text {
+      margin-bottom: 14px;
+      text-align: justify;
+    }
+
+    .urgent-callout {
+      background: #fff3f3;
+      border-left: 4px solid #8b0000;
+      padding: 8px 12px;
+      margin-bottom: 18px;
+      font-size: 10pt;
+    }
+
+    /* ── Section headings ─────────────────────────────────── */
+    h2 {
+      font-size: 11pt;
+      font-weight: bold;
+      color: #8b0000;
+      border-bottom: 1px solid #ddd;
+      padding-bottom: 4px;
+      margin: 18px 0 8px 0;
+    }
+
+    /* ── Data tables ──────────────────────────────────────── */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 10pt;
+      margin-bottom: 6px;
+    }
+
+    table th {
+      background: #f0f0f0;
+      font-weight: bold;
+      text-align: left;
+      padding: 5px 8px;
+      border: 1px solid #ccc;
+      font-size: 9.5pt;
+    }
+
+    table td {
+      padding: 5px 8px;
+      border: 1px solid #ddd;
+      vertical-align: top;
+    }
+
+    table tr:nth-child(even) td { background: #fafafa; }
+
+    td.amount { text-align: right; font-family: "Courier New", monospace; white-space: nowrap; }
+
+    tr.subtotal td { border-top: 2px solid #999; font-weight: bold; }
+    tr.total-row td { background: #fff3f3 !important; border-top: 2px solid #8b0000; font-weight: bold; color: #8b0000; }
+
+    /* ── Footer ───────────────────────────────────────────── */
+    .footer {
+      margin-top: 24px;
+      border-top: 1px solid #ccc;
+      padding-top: 12px;
+      font-size: 8.5pt;
+      color: #555;
+    }
+
+    .footer .contact-line { margin-bottom: 6px; }
+    .footer .disclaimer { font-size: 7.5pt; color: #888; font-style: italic; }
+
+    /* ── Print rules ──────────────────────────────────────── */
+    @media print {
+      body { font-size: 10.5pt; }
+      .page { padding: 0; width: 100%; }
+      table { page-break-inside: avoid; }
+      h2 { page-break-after: avoid; }
+    }
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="company-block">
+      <div class="company-name">HOMESTEAD MORTGAGE SERVICES</div>
+      <div class="company-tag">Escrow Analysis Division</div>
+    </div>
+    <div class="company-address">
+      P.O. Box 12345 &bull; Dallas, TX 75201<br>
+      Phone: (800) 555-0100 &bull; Fax: (800) 555-0101<br>
+      www.homesteadmortgage.example.com
+    </div>
+  </div>
+
+  <!-- Notice banner -->
+  <div class="notice-banner">
+    <h1>&#9888; URGENT ESCROW SHORTAGE NOTICE</h1>
+    <div class="notice-sub">Immediate Attention Required &mdash; Action May Be Needed</div>
+  </div>
+
+  <!-- Statement meta -->
+  <div class="meta-row">
+    <span><span class="label">Statement Date: </span><span class="value">{{statement_date:date}}</span></span>
+    <span><span class="label">Loan Number: </span><span class="value">{{loan_number}}</span></span>
+    <span><span class="label">Last Analysis: </span><span class="value">{{last_analysis_date:date}}</span></span>
+  </div>
+
+  <!-- Recipient -->
+  <div class="recipient-block">
+    <div class="name">{{borrower_name}}</div>
+    <div>{{property_address}}</div>
+  </div>
+
+  <p class="salutation">Dear {{borrower_name}},</p>
+
+  <p class="body-text">
+    Our most recent annual escrow analysis has revealed a <strong>significant shortage</strong> in
+    your escrow account. This means your current escrow balance is insufficient to cover upcoming
+    disbursements for property taxes and insurance. We are required by federal regulation (RESPA)
+    to notify you of this shortage and outline your options for resolution.
+  </p>
+
+  <div class="urgent-callout">
+    <strong>Your escrow account is short by {{shortage_amount:currency}}.</strong>
+    Without correction, this shortage could result in a payment increase or require a lump-sum
+    payment to bring your account to the required minimum balance.
+  </div>
+
+  <!-- Escrow Account Summary -->
+  <h2>Escrow Account Summary</h2>
+  <table>
+    <tr>
+      <td>Current Escrow Balance</td>
+      <td class="amount">{{escrow_balance:currency}}</td>
+    </tr>
+    <tr>
+      <td>Required Reserve Balance</td>
+      <td class="amount">{{required_reserve:currency}}</td>
+    </tr>
+    <tr class="subtotal">
+      <td>Escrow Shortage</td>
+      <td class="amount">{{shortage_amount:currency}}</td>
+    </tr>
+    <tr>
+      <td>Current Monthly Escrow Payment</td>
+      <td class="amount">{{escrow_payment:currency}}</td>
+    </tr>
+    {{#if monthly_escrow_adjustment}}
+    <tr>
+      <td>Monthly Shortage Adjustment (shortage &divide; 12)</td>
+      <td class="amount">{{monthly_escrow_adjustment:currency}}</td>
+    </tr>
+    {{/if}}
+    {{#if adjusted_monthly_payment}}
+    <tr class="total-row">
+      <td>New Monthly Escrow Payment</td>
+      <td class="amount">{{adjusted_monthly_payment:currency}}</td>
+    </tr>
+    {{/if}}
+  </table>
+
+  <!-- Disbursement Schedule -->
+  <h2>Disbursement Schedule</h2>
+  <table>
+    <tr>
+      <th>Disbursement Item</th>
+      <th style="text-align:right">Annual Amount</th>
+    </tr>
+    <tr>
+      <td>Property Taxes</td>
+      <td class="amount">{{tax_amount:currency}}</td>
+    </tr>
+    <tr>
+      <td>Homeowner's Insurance</td>
+      <td class="amount">{{hazard_insurance:currency}}</td>
+    </tr>
+    {{#if flood_insurance}}
+    <tr>
+      <td>Flood Insurance</td>
+      <td class="amount">{{flood_insurance:currency}}</td>
+    </tr>
+    {{/if}}
+    {{#if mortgage_insurance}}
+    <tr>
+      <td>Mortgage Insurance Premium</td>
+      <td class="amount">{{mortgage_insurance:currency}}</td>
+    </tr>
+    {{/if}}
+  </table>
+
+  <!-- Analysis Dates -->
+  <h2>Analysis Information</h2>
+  <table>
+    <tr>
+      <td style="width:50%">Last Escrow Analysis Date</td>
+      <td>{{last_analysis_date:date}}</td>
+    </tr>
+    <tr>
+      <td>Next Escrow Analysis Date</td>
+      <td>{{next_analysis_date:date}}</td>
+    </tr>
+  </table>
+
+  <!-- Footer -->
+  <div class="footer">
+    <p class="contact-line">
+      <strong>Questions?</strong> Please contact our Escrow Department at <strong>(800) 555-0100</strong>
+      (Monday&ndash;Friday, 8 AM&ndash;6 PM CT) or write to us at P.O. Box 12345, Dallas, TX 75201.
+      You may also visit our website at www.homesteadmortgage.example.com.
+    </p>
+    <p class="disclaimer">
+      This notice is provided pursuant to the Real Estate Settlement Procedures Act (RESPA), 12 U.S.C.
+      &sect;&nbsp;2609 and Regulation X, 24 C.F.R. Part 3500. This document contains confidential
+      information intended solely for the named recipient. Homestead Mortgage Services is a licensed
+      mortgage servicer. &copy; 2026 Homestead Mortgage Services. All rights reserved.
+    </p>
+  </div>
+
+</div>
+</body>
+</html>

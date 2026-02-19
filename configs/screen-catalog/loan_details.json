@@ -1,0 +1,43 @@
+{
+  "screen_id": "loan_details",
+  "identifier": {
+    "row": 1,
+    "col": 25,
+    "expected_text": "Loan Details"
+  },
+  "fields": [
+    { "name": "loan_number",     "type": "display", "row": 4,  "col": 35, "length": 10 },
+    { "name": "borrower_name",   "type": "display", "row": 5,  "col": 35, "length": 30 },
+    { "name": "property_address","type": "display", "row": 6,  "col": 35, "length": 40 },
+    { "name": "loan_type",       "type": "display", "row": 8,  "col": 35, "length": 15 },
+    { "name": "original_amount", "type": "display", "row": 9,  "col": 35, "length": 15 },
+    { "name": "current_balance", "type": "display", "row": 10, "col": 35, "length": 15, "attributes": "highlighted" },
+    { "name": "interest_rate",   "type": "display", "row": 11, "col": 35, "length": 10 },
+    { "name": "monthly_payment", "type": "display", "row": 12, "col": 35, "length": 15 },
+    { "name": "next_due_date",   "type": "display", "row": 13, "col": 35, "length": 10 },
+    { "name": "loan_status",     "type": "display", "row": 14, "col": 35, "length": 12 },
+    { "name": "origination_date","type": "display", "row": 16, "col": 35, "length": 10 },
+    { "name": "maturity_date",   "type": "display", "row": 17, "col": 35, "length": 10 },
+    { "name": "escrow_balance",  "type": "display", "row": 19, "col": 35, "length": 15, "attributes": "highlighted" },
+    { "name": "escrow_status",   "type": "display", "row": 20, "col": 35, "length": 12 }
+  ],
+  "static_text": [
+    { "row": 1,  "col": 25, "text": "Loan Details" },
+    { "row": 1,  "col": 60, "text": "LOANDTL" },
+    { "row": 4,  "col": 5,  "text": "Loan Number  . . . . . . . :" },
+    { "row": 5,  "col": 5,  "text": "Borrower . . . . . . . . . :" },
+    { "row": 6,  "col": 5,  "text": "Property Address  . . . . .:" },
+    { "row": 8,  "col": 5,  "text": "Loan Type  . . . . . . . . :" },
+    { "row": 9,  "col": 5,  "text": "Original Amount  . . . . . :" },
+    { "row": 10, "col": 5,  "text": "Current Balance  . . . . . :" },
+    { "row": 11, "col": 5,  "text": "Interest Rate  . . . . . . :" },
+    { "row": 12, "col": 5,  "text": "Monthly Payment  . . . . . :" },
+    { "row": 13, "col": 5,  "text": "Next Due Date  . . . . . . :" },
+    { "row": 14, "col": 5,  "text": "Loan Status  . . . . . . . :" },
+    { "row": 16, "col": 5,  "text": "Origination Date . . . . . :" },
+    { "row": 17, "col": 5,  "text": "Maturity Date  . . . . . . :" },
+    { "row": 19, "col": 5,  "text": "Escrow Balance . . . . . . :" },
+    { "row": 20, "col": 5,  "text": "Escrow Status  . . . . . . :" },
+    { "row": 22, "col": 5,  "text": "F3=Exit   F6=Escrow Analysis   F12=Previous" }
+  ]
+}

@@ -1,0 +1,47 @@
+version: "3.9"
+
+services:
+  mock-server:
+    build:
+      context: .
+      dockerfile: src/Hack13.TerminalServer/Dockerfile
+    ports:
+      - "5250:5250"
+
+  smtp:
+    image: rnwood/smtp4dev:latest
+    ports:
+      - "3000:80"
+      - "25:25"
+
+  api:
+    build:
+      context: .
+      dockerfile: src/Hack13.Api/Dockerfile
+    environment:
+      - ASPNETCORE_URLS=http://+:5000
+      - EmailSender__Transport__Type=smtp
+      - EmailSender__Transport__Smtp__Host=smtp
+      - EmailSender__Transport__Smtp__Port=25
+      - Workflow__EnvironmentSettings__host=mock-server
+      - Workflow__EnvironmentSettings__screen_catalog_path=/app/configs/screen-catalog
+      - Workflow__EnvironmentSettings__customer_email=demo@example.com
+    volumes:
+      - ./configs:/app/configs:ro
+      - ./output:/app/output
+    depends_on:
+      - mock-server
+      - smtp
+    ports:
+      - "5000:5000"
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    environment:
+      - VITE_API_BASE_URL=http://localhost:5000
+    depends_on:
+      - api
+    ports:
+      - "8080:80"

@@ -1,0 +1,10 @@
+{
+  "component_type": "pdf_generator",
+  "component_version": "1.0",
+  "description": "Generate escrow statement PDF",
+  "config": {
+    "template_id": "{{pdf_template}}",
+    "template_registry_path": "configs/templates/template-registry.json",
+    "output_directory": "output/pdfs"
+  }
+}

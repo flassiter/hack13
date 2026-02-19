@@ -1,0 +1,92 @@
+{
+  "component_type": "green_screen_connector",
+  "component_version": "1.0",
+  "description": "Lookup escrow details from green-screen system",
+  "config": {
+    "connection": {
+      "host": "{{host}}",
+      "port": 5250,
+      "connect_timeout_seconds": 5,
+      "response_timeout_seconds": 10
+    },
+    "screen_catalog_path": "{{screen_catalog_path}}",
+    "steps": [
+      {
+        "step_name": "sign_on",
+        "type": "Navigate",
+        "fields": {
+          "user_id": "{{user_id}}",
+          "password": "{{password}}"
+        },
+        "aid_key": "Enter",
+        "expect_screen": "loan_inquiry"
+      },
+      {
+        "step_name": "verify_sign_on",
+        "type": "Assert",
+        "expect_screen": "loan_inquiry",
+        "error_text": "Invalid user ID or password",
+        "error_row": 24
+      },
+      {
+        "step_name": "enter_loan_number",
+        "type": "Navigate",
+        "fields": {
+          "loan_number": "{{loan_number}}"
+        },
+        "aid_key": "Enter",
+        "expect_screen": "loan_details"
+      },
+      {
+        "step_name": "verify_loan_details",
+        "type": "Assert",
+        "expect_screen": "loan_details",
+        "error_text": "Loan not found",
+        "error_row": 24
+      },
+      {
+        "step_name": "scrape_loan_details",
+        "type": "Scrape",
+        "screen": "loan_details",
+        "scrape_fields": [
+          "borrower_name",
+          "property_address",
+          "loan_type",
+          "original_amount",
+          "current_balance",
+          "interest_rate",
+          "monthly_payment",
+          "next_due_date",
+          "loan_status",
+          "origination_date"
+        ]
+      },
+      {
+        "step_name": "go_to_escrow",
+        "type": "Navigate",
+        "aid_key": "F6",
+        "expect_screen": "escrow_analysis"
+      },
+      {
+        "step_name": "scrape_escrow_analysis",
+        "type": "Scrape",
+        "screen": "escrow_analysis",
+        "scrape_fields": [
+          "escrow_balance",
+          "escrow_payment",
+          "required_reserve",
+          "shortage_amount",
+          "surplus_amount",
+          "escrow_status",
+          "tax_amount",
+          "hazard_insurance",
+          "flood_insurance",
+          "mortgage_insurance",
+          "last_analysis_date",
+          "next_analysis_date",
+          "projected_balance"
+        ]
+      }
+    ]
+  }
+}

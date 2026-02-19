@@ -1,0 +1,66 @@
+{
+  "component_type": "decision",
+  "component_version": "1.0",
+  "description": "Select notice, PDF template, and email priority",
+  "config": {
+    "evaluation_mode": "first_match",
+    "rules": [
+      {
+        "rule_name": "significant_shortage",
+        "condition": {
+          "field": "escrow_shortage_surplus",
+          "operator": "less_than",
+          "value": "-500"
+        },
+        "outputs": {
+          "notice_type": "shortage_urgent",
+          "pdf_template": "escrow_shortage_urgent",
+          "email_template": "escrow_email.html",
+          "email_priority": "high"
+        }
+      },
+      {
+        "rule_name": "minor_shortage",
+        "condition": {
+          "field": "escrow_shortage_surplus",
+          "operator": "less_than",
+          "value": "0"
+        },
+        "outputs": {
+          "notice_type": "shortage_minor",
+          "pdf_template": "escrow_shortage_minor",
+          "email_template": "escrow_email.html",
+          "email_priority": "normal"
+        }
+      },
+      {
+        "rule_name": "surplus",
+        "condition": {
+          "field": "escrow_shortage_surplus",
+          "operator": "greater_than",
+          "value": "0"
+        },
+        "outputs": {
+          "notice_type": "surplus",
+          "pdf_template": "escrow_surplus",
+          "email_template": "escrow_email.html",
+          "email_priority": "normal"
+        }
+      },
+      {
+        "rule_name": "even",
+        "condition": {
+          "field": "escrow_shortage_surplus",
+          "operator": "equals",
+          "value": "0"
+        },
+        "outputs": {
+          "notice_type": "current",
+          "pdf_template": "escrow_current",
+          "email_template": "escrow_email.html",
+          "email_priority": "normal"
+        }
+      }
+    ]
+  }
+}

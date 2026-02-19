@@ -1,0 +1,22 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\Hack13.Calculator\Hack13.Calculator.csproj" />
+    <ProjectReference Include="..\Hack13.Contracts\Hack13.Contracts.csproj" />
+    <ProjectReference Include="..\Hack13.DecisionEngine\Hack13.DecisionEngine.csproj" />
+    <ProjectReference Include="..\Hack13.EmailSender\Hack13.EmailSender.csproj" />
+    <ProjectReference Include="..\Hack13.TerminalClient\Hack13.TerminalClient.csproj" />
+    <ProjectReference Include="..\Hack13.PdfGenerator\Hack13.PdfGenerator.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Hack13.Orchestrator.Tests" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+</Project>

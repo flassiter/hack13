@@ -1,0 +1,39 @@
+{
+  "workflow_id": "escrow_statement_generation",
+  "workflow_version": "1.0",
+  "description": "Look up escrow data, calculate shortage/surplus, choose templates, generate PDF, and email borrower",
+  "initial_parameters": ["loan_number"],
+  "steps": [
+    {
+      "step_name": "lookup_escrow_data",
+      "component_type": "green_screen_connector",
+      "component_config": "../components/escrow_lookup.json",
+      "on_failure": "abort",
+      "retry": { "max_attempts": 2, "backoff_seconds": 1 }
+    },
+    {
+      "step_name": "calculate_shortage",
+      "component_type": "calculate",
+      "component_config": "../components/escrow_shortage_calc.json",
+      "on_failure": "abort"
+    },
+    {
+      "step_name": "determine_notice_type",
+      "component_type": "decision",
+      "component_config": "../components/escrow_notice_decision.json",
+      "on_failure": "abort"
+    },
+    {
+      "step_name": "generate_pdf",
+      "component_type": "pdf_generator",
+      "component_config": "../components/escrow_pdf_config.json",
+      "on_failure": "abort"
+    },
+    {
+      "step_name": "send_email",
+      "component_type": "email_sender",
+      "component_config": "../components/escrow_email_config.json",
+      "on_failure": "log_and_continue"
+    }
+  ]
+}

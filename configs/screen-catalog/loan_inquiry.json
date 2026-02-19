@@ -1,0 +1,27 @@
+{
+  "screen_id": "loan_inquiry",
+  "identifier": {
+    "row": 1,
+    "col": 25,
+    "expected_text": "Loan Inquiry"
+  },
+  "fields": [
+    {
+      "name": "loan_number",
+      "type": "input",
+      "row": 8,
+      "col": 35,
+      "length": 10
+    }
+  ],
+  "static_text": [
+    { "row": 1,  "col": 25, "text": "Loan Inquiry" },
+    { "row": 3,  "col": 2,  "text": "Mortgage Servicing System" },
+    { "row": 3,  "col": 60, "text": "LOANINQ" },
+    { "row": 6,  "col": 5,  "text": "Enter loan number to view loan details." },
+    { "row": 8,  "col": 13, "text": "Loan Number . . . . :" },
+    { "row": 12, "col": 5,  "text": "Test Loans:  1000001  1000002  1000003" },
+    { "row": 16, "col": 5,  "text": "F3=Exit   Enter=Submit" },
+    { "row": 20, "col": 5,  "text": "Ready" }
+  ]
+}

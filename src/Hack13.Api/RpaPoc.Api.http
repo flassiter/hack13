@@ -1,0 +1,6 @@
+@Hack13.Api_HostAddress = http://localhost:5282
+
+GET {{Hack13.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

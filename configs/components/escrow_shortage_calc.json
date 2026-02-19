@@ -1,0 +1,30 @@
+{
+  "component_type": "calculate",
+  "component_version": "1.0",
+  "description": "Compute escrow shortage/surplus and payment adjustment",
+  "config": {
+    "calculations": [
+      {
+        "name": "shortage_surplus",
+        "output_key": "escrow_shortage_surplus",
+        "operation": "subtract",
+        "inputs": ["escrow_balance", "required_reserve"],
+        "format": { "decimal_places": 2 }
+      },
+      {
+        "name": "monthly_adjustment",
+        "output_key": "monthly_escrow_adjustment",
+        "operation": "divide",
+        "inputs": ["escrow_shortage_surplus", "12"],
+        "format": { "decimal_places": 2 }
+      },
+      {
+        "name": "adjusted_payment",
+        "output_key": "adjusted_monthly_payment",
+        "operation": "add",
+        "inputs": ["monthly_payment", "monthly_escrow_adjustment"],
+        "format": { "decimal_places": 2 }
+      }
+    ]
+  }
+}

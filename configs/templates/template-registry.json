@@ -1,0 +1,105 @@
+{
+  "templates": [
+    {
+      "template_id": "escrow_shortage_urgent",
+      "file_path": "./escrow_shortage_urgent.html",
+      "required_fields": [
+        "borrower_name",
+        "loan_number",
+        "property_address",
+        "escrow_balance",
+        "required_reserve",
+        "shortage_amount",
+        "escrow_payment",
+        "monthly_payment",
+        "tax_amount",
+        "hazard_insurance",
+        "last_analysis_date",
+        "next_analysis_date"
+      ],
+      "optional_fields": [
+        "statement_date",
+        "flood_insurance",
+        "mortgage_insurance",
+        "escrow_shortage_surplus",
+        "monthly_escrow_adjustment",
+        "adjusted_monthly_payment"
+      ],
+      "default_filename_pattern": "escrow_statement_{{loan_number}}_{{statement_date}}.pdf"
+    },
+    {
+      "template_id": "escrow_shortage_minor",
+      "file_path": "./escrow_shortage_minor.html",
+      "required_fields": [
+        "borrower_name",
+        "loan_number",
+        "property_address",
+        "escrow_balance",
+        "required_reserve",
+        "shortage_amount",
+        "escrow_payment",
+        "monthly_payment",
+        "tax_amount",
+        "hazard_insurance",
+        "last_analysis_date",
+        "next_analysis_date"
+      ],
+      "optional_fields": [
+        "statement_date",
+        "flood_insurance",
+        "mortgage_insurance",
+        "escrow_shortage_surplus",
+        "monthly_escrow_adjustment",
+        "adjusted_monthly_payment"
+      ],
+      "default_filename_pattern": "escrow_statement_{{loan_number}}_{{statement_date}}.pdf"
+    },
+    {
+      "template_id": "escrow_surplus",
+      "file_path": "./escrow_surplus.html",
+      "required_fields": [
+        "borrower_name",
+        "loan_number",
+        "property_address",
+        "escrow_balance",
+        "required_reserve",
+        "surplus_amount",
+        "escrow_payment",
+        "monthly_payment",
+        "tax_amount",
+        "hazard_insurance",
+        "last_analysis_date",
+        "next_analysis_date"
+      ],
+      "optional_fields": [
+        "statement_date",
+        "flood_insurance",
+        "mortgage_insurance"
+      ],
+      "default_filename_pattern": "escrow_statement_{{loan_number}}_{{statement_date}}.pdf"
+    },
+    {
+      "template_id": "escrow_current",
+      "file_path": "./escrow_current.html",
+      "required_fields": [
+        "borrower_name",
+        "loan_number",
+        "property_address",
+        "escrow_balance",
+        "required_reserve",
+        "escrow_payment",
+        "monthly_payment",
+        "tax_amount",
+        "hazard_insurance",
+        "last_analysis_date",
+        "next_analysis_date"
+      ],
+      "optional_fields": [
+        "statement_date",
+        "flood_insurance",
+        "mortgage_insurance"
+      ],
+      "default_filename_pattern": "escrow_statement_{{loan_number}}_{{statement_date}}.pdf"
+    }
+  ]
+}

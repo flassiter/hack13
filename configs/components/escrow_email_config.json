@@ -1,0 +1,13 @@
+{
+  "component_type": "email_sender",
+  "component_version": "1.0",
+  "description": "Send escrow statement email",
+  "config": {
+    "from": "statements@example.com",
+    "to": ["{{customer_email}}"],
+    "subject": "Escrow Analysis Statement - Loan {{loan_number}}",
+    "body_template": "{{email_template}}",
+    "attachments": ["{{pdf_file_path}}"],
+    "reply_to": "support@example.com"
+  }
+}

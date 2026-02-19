@@ -1,0 +1,34 @@
+{
+  "screen_id": "sign_on",
+  "identifier": {
+    "row": 1,
+    "col": 28,
+    "expected_text": "Sign On"
+  },
+  "fields": [
+    {
+      "name": "user_id",
+      "type": "input",
+      "row": 10,
+      "col": 35,
+      "length": 10
+    },
+    {
+      "name": "password",
+      "type": "input",
+      "row": 12,
+      "col": 35,
+      "length": 10,
+      "attributes": "hidden"
+    }
+  ],
+  "static_text": [
+    { "row": 1,  "col": 28, "text": "Sign On" },
+    { "row": 3,  "col": 20, "text": "Mortgage Servicing System" },
+    { "row": 6,  "col": 10, "text": "Welcome to the Loan Management Platform" },
+    { "row": 10, "col": 17, "text": "User ID . . . . :" },
+    { "row": 12, "col": 17, "text": "Password  . . . :" },
+    { "row": 16, "col": 17, "text": "Press Enter to sign on." },
+    { "row": 20, "col": 5,  "text": "(C) 2024 Mortgage Servicing Corp.  All rights reserved." }
+  ]
+}
