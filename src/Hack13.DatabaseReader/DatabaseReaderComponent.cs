@@ -108,30 +108,62 @@ public class DatabaseReaderComponent : IComponent
                     var prefix = dbConfig.OutputPrefix ?? string.Empty;
                     var rowCount = 0;
 
-                    if (await reader.ReadAsync(cancellationToken))
+                    if (dbConfig.MultiRow)
                     {
-                        rowCount++;
-
-                        for (var i = 0; i < reader.FieldCount; i++)
+                        var rows = new List<Dictionary<string, string>>();
+                        while (await reader.ReadAsync(cancellationToken))
                         {
-                            var columnName = reader.GetName(i);
-                            var columnValue = reader.IsDBNull(i)
-                                ? string.Empty
-                                : reader.GetValue(i)?.ToString() ?? string.Empty;
-                            var outputKey = $"{prefix}{columnName}";
-
-                            outputData[outputKey] = columnValue;
-                            dataDictionary[outputKey] = columnValue;
-
-                            logs.Add(MakeLog(LogLevel.Debug, $"Column '{columnName}' → '{outputKey}' = '{columnValue}'"));
+                            var row = new Dictionary<string, string>();
+                            for (var i = 0; i < reader.FieldCount; i++)
+                            {
+                                var columnName = reader.GetName(i);
+                                var columnValue = reader.IsDBNull(i)
+                                    ? string.Empty
+                                    : reader.GetValue(i)?.ToString() ?? string.Empty;
+                                row[$"{prefix}{columnName}"] = columnValue;
+                            }
+                            rows.Add(row);
                         }
 
-                        while (await reader.ReadAsync(cancellationToken))
-                            rowCount++;
-                    }
+                        rowCount = rows.Count;
 
-                    if (rowCount == 0 && dbConfig.RequireRow)
-                        return Failure("NO_ROWS_RETURNED", "Query returned no rows but require_row is true.", null, sw);
+                        if (rowCount == 0 && dbConfig.RequireRow)
+                            return Failure("NO_ROWS_RETURNED", "Query returned no rows but require_row is true.", null, sw);
+
+                        var rowsKey = dbConfig.RowsOutputKey;
+                        var rowsJson = JsonSerializer.Serialize(rows);
+                        outputData[rowsKey] = rowsJson;
+                        dataDictionary[rowsKey] = rowsJson;
+
+                        logs.Add(MakeLog(LogLevel.Info, $"Multi-row mode: serialized {rowCount} row(s) to '{rowsKey}'."));
+                    }
+                    else
+                    {
+                        if (await reader.ReadAsync(cancellationToken))
+                        {
+                            rowCount++;
+
+                            for (var i = 0; i < reader.FieldCount; i++)
+                            {
+                                var columnName = reader.GetName(i);
+                                var columnValue = reader.IsDBNull(i)
+                                    ? string.Empty
+                                    : reader.GetValue(i)?.ToString() ?? string.Empty;
+                                var outputKey = $"{prefix}{columnName}";
+
+                                outputData[outputKey] = columnValue;
+                                dataDictionary[outputKey] = columnValue;
+
+                                logs.Add(MakeLog(LogLevel.Debug, $"Column '{columnName}' → '{outputKey}' = '{columnValue}'"));
+                            }
+
+                            while (await reader.ReadAsync(cancellationToken))
+                                rowCount++;
+                        }
+
+                        if (rowCount == 0 && dbConfig.RequireRow)
+                            return Failure("NO_ROWS_RETURNED", "Query returned no rows but require_row is true.", null, sw);
+                    }
 
                     outputData["db_row_count"] = rowCount.ToString();
                     dataDictionary["db_row_count"] = rowCount.ToString();

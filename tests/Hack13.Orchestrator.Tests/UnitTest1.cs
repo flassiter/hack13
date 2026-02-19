@@ -280,6 +280,247 @@ public class WorkflowOrchestratorTests : IDisposable
         Assert.Equal("yes", summary.FinalDataDictionary["ran"]);
     }
 
+    // -------------------------------------------------------------------------
+    // Foreach step tests
+    // -------------------------------------------------------------------------
+
+    [Fact]
+    public async Task Foreach_ExecutesSubStepsForEachRow()
+    {
+        var workflowPath = WriteWorkflow("""
+            {
+              "workflow_id": "wf-foreach-basic",
+              "workflow_version": "1.0",
+              "steps": [
+                {
+                  "step_name": "process_rows",
+                  "component_type": "foreach",
+                  "foreach": { "rows_key": "db_rows", "row_prefix": "row_" },
+                  "on_failure": "abort",
+                  "sub_steps": [
+                    { "step_name": "do_work", "component_type": "test_component", "component_config": "./sub.json" }
+                  ]
+                }
+              ]
+            }
+            """);
+        WriteJson("sub.json", """{ "status": "success", "output_data": { "sub_ran": "true" } }""");
+
+        var callCount = 0;
+        var registry = new ComponentRegistry()
+            .Register("test_component", () => new CallbackComponent(() => callCount++));
+        var orchestrator = CreateOrchestrator(registry);
+
+        var rows = """[{"id":"1","name":"Alice"},{"id":"2","name":"Bob"},{"id":"3","name":"Carol"}]""";
+        var summary = await orchestrator.ExecuteAsync(workflowPath, new Dictionary<string, string>
+        {
+            ["db_rows"] = rows
+        });
+
+        Assert.Equal(ComponentStatus.Success, summary.FinalStatus);
+        Assert.Equal(3, callCount);
+        Assert.Single(summary.Steps);
+        Assert.NotNull(summary.Steps[0].Iterations);
+        Assert.Equal(3, summary.Steps[0].Iterations!.Count);
+    }
+
+    [Fact]
+    public async Task Foreach_InjectedRowFieldsAvailableToSubSteps_MainDictionaryUnchanged()
+    {
+        var workflowPath = WriteWorkflow("""
+            {
+              "workflow_id": "wf-foreach-isolation",
+              "workflow_version": "1.0",
+              "steps": [
+                {
+                  "step_name": "iterate",
+                  "component_type": "foreach",
+                  "foreach": { "rows_key": "db_rows", "row_prefix": "" },
+                  "on_failure": "abort",
+                  "sub_steps": [
+                    { "step_name": "capture", "component_type": "capture_component", "component_config": "./cap.json" }
+                  ]
+                }
+              ]
+            }
+            """);
+        WriteJson("cap.json", """{ "status": "ignored" }""");
+
+        var capturedDicts = new List<Dictionary<string, string>>();
+        var registry = new ComponentRegistry()
+            .Register("capture_component", () => new CaptureDictionaryComponent(capturedDicts));
+        var orchestrator = CreateOrchestrator(registry);
+
+        var rows = """[{"loan_number":"L001"},{"loan_number":"L002"}]""";
+        var summary = await orchestrator.ExecuteAsync(workflowPath, new Dictionary<string, string>
+        {
+            ["db_rows"] = rows
+        });
+
+        Assert.Equal(ComponentStatus.Success, summary.FinalStatus);
+        Assert.Equal(2, capturedDicts.Count);
+
+        // Each iteration received the correct row field
+        Assert.Equal("L001", capturedDicts[0]["loan_number"]);
+        Assert.Equal("L002", capturedDicts[1]["loan_number"]);
+
+        // Main data dictionary was not mutated by sub-step output
+        Assert.DoesNotContain("loan_number", summary.FinalDataDictionary.Keys);
+    }
+
+    [Fact]
+    public async Task Foreach_MissingRowsKey_ReturnsFailure()
+    {
+        var workflowPath = WriteWorkflow("""
+            {
+              "workflow_id": "wf-foreach-missing-key",
+              "workflow_version": "1.0",
+              "steps": [
+                {
+                  "step_name": "iterate",
+                  "component_type": "foreach",
+                  "foreach": { "rows_key": "db_rows" },
+                  "on_failure": "abort",
+                  "sub_steps": [
+                    { "step_name": "do_work", "component_type": "test_component", "component_config": "./s.json" }
+                  ]
+                }
+              ]
+            }
+            """);
+        WriteJson("s.json", """{ "status": "success" }""");
+
+        var registry = new ComponentRegistry()
+            .Register("test_component", () => new ScriptedComponent());
+        var orchestrator = CreateOrchestrator(registry);
+
+        // db_rows not in parameters — key is missing
+        var summary = await orchestrator.ExecuteAsync(workflowPath, new Dictionary<string, string>());
+
+        Assert.Equal(ComponentStatus.Failure, summary.FinalStatus);
+        Assert.Equal("FOREACH_ROWS_MISSING", summary.Steps[0].Error?.ErrorCode);
+    }
+
+    [Fact]
+    public async Task Foreach_IterationFails_OnFailureAbort_StopsImmediately()
+    {
+        var workflowPath = WriteWorkflow("""
+            {
+              "workflow_id": "wf-foreach-abort",
+              "workflow_version": "1.0",
+              "steps": [
+                {
+                  "step_name": "iterate",
+                  "component_type": "foreach",
+                  "foreach": { "rows_key": "db_rows" },
+                  "on_failure": "abort",
+                  "sub_steps": [
+                    { "step_name": "fail_step", "component_type": "fail_component", "component_config": "./fail.json", "on_failure": "abort" }
+                  ]
+                }
+              ]
+            }
+            """);
+        WriteJson("fail.json", """{ "status": "failure", "error_code": "BOOM", "error_message": "iteration failed" }""");
+
+        var callCount = 0;
+        var registry = new ComponentRegistry()
+            .Register("fail_component", () => new CallbackAndFailComponent(() => callCount++));
+        var orchestrator = CreateOrchestrator(registry);
+
+        var rows = """[{"id":"1"},{"id":"2"},{"id":"3"}]""";
+        var summary = await orchestrator.ExecuteAsync(workflowPath, new Dictionary<string, string>
+        {
+            ["db_rows"] = rows
+        });
+
+        Assert.Equal(ComponentStatus.Failure, summary.FinalStatus);
+        Assert.Equal(1, callCount); // Stopped after first failure
+        Assert.Single(summary.Steps[0].Iterations!);
+        Assert.Equal(ComponentStatus.Failure, summary.Steps[0].Iterations![0].Status);
+    }
+
+    [Fact]
+    public async Task Foreach_IterationFails_OnFailureLogAndContinue_ProcessesAllRows()
+    {
+        var workflowPath = WriteWorkflow("""
+            {
+              "workflow_id": "wf-foreach-log-continue",
+              "workflow_version": "1.0",
+              "steps": [
+                {
+                  "step_name": "iterate",
+                  "component_type": "foreach",
+                  "foreach": { "rows_key": "db_rows" },
+                  "on_failure": "log_and_continue",
+                  "sub_steps": [
+                    { "step_name": "fail_step", "component_type": "fail_component", "component_config": "./fail.json", "on_failure": "abort" }
+                  ]
+                }
+              ]
+            }
+            """);
+        WriteJson("fail.json", """{ "status": "failure", "error_code": "BOOM", "error_message": "non-fatal" }""");
+
+        var callCount = 0;
+        var registry = new ComponentRegistry()
+            .Register("fail_component", () => new CallbackAndFailComponent(() => callCount++));
+        var orchestrator = CreateOrchestrator(registry);
+
+        var rows = """[{"id":"1"},{"id":"2"},{"id":"3"}]""";
+        var summary = await orchestrator.ExecuteAsync(workflowPath, new Dictionary<string, string>
+        {
+            ["db_rows"] = rows
+        });
+
+        // Workflow continues because foreach has log_and_continue
+        Assert.Equal(ComponentStatus.Success, summary.FinalStatus);
+        // All 3 rows were processed despite each failing
+        Assert.Equal(3, callCount);
+        Assert.Equal(3, summary.Steps[0].Iterations!.Count);
+        // The foreach step itself is recorded as failed (some iterations failed)
+        Assert.Equal(ComponentStatus.Failure, summary.Steps[0].Status);
+    }
+
+    [Fact]
+    public async Task Foreach_ForEachIndexAndCount_InjectedIntoScopedDict()
+    {
+        var workflowPath = WriteWorkflow("""
+            {
+              "workflow_id": "wf-foreach-index",
+              "workflow_version": "1.0",
+              "steps": [
+                {
+                  "step_name": "iterate",
+                  "component_type": "foreach",
+                  "foreach": { "rows_key": "db_rows" },
+                  "on_failure": "abort",
+                  "sub_steps": [
+                    { "step_name": "capture", "component_type": "capture_component", "component_config": "./cap.json" }
+                  ]
+                }
+              ]
+            }
+            """);
+        WriteJson("cap.json", """{ "status": "ignored" }""");
+
+        var capturedDicts = new List<Dictionary<string, string>>();
+        var registry = new ComponentRegistry()
+            .Register("capture_component", () => new CaptureDictionaryComponent(capturedDicts));
+        var orchestrator = CreateOrchestrator(registry);
+
+        var rows = """[{"id":"A"},{"id":"B"}]""";
+        await orchestrator.ExecuteAsync(workflowPath, new Dictionary<string, string>
+        {
+            ["db_rows"] = rows
+        });
+
+        Assert.Equal("0", capturedDicts[0]["_foreach_index"]);
+        Assert.Equal("2", capturedDicts[0]["_foreach_count"]);
+        Assert.Equal("1", capturedDicts[1]["_foreach_index"]);
+        Assert.Equal("2", capturedDicts[1]["_foreach_count"]);
+    }
+
     private WorkflowOrchestrator CreateOrchestrator(
         ComponentRegistry registry,
         WorkflowOrchestratorOptions? options = null) =>
@@ -404,5 +645,37 @@ internal sealed class ThrowingComponent : IComponent
         CancellationToken cancellationToken = default)
     {
         throw new InvalidOperationException("simulated crash");
+    }
+}
+
+internal sealed class CaptureDictionaryComponent(List<Dictionary<string, string>> captured) : IComponent
+{
+    public string ComponentType => "capture_component";
+
+    public Task<ComponentResult> ExecuteAsync(
+        ComponentConfiguration config,
+        Dictionary<string, string> dataDictionary,
+        CancellationToken cancellationToken = default)
+    {
+        captured.Add(new Dictionary<string, string>(dataDictionary, StringComparer.OrdinalIgnoreCase));
+        return Task.FromResult(new ComponentResult { Status = ComponentStatus.Success });
+    }
+}
+
+internal sealed class CallbackAndFailComponent(Action onExecute) : IComponent
+{
+    public string ComponentType => "fail_component";
+
+    public Task<ComponentResult> ExecuteAsync(
+        ComponentConfiguration config,
+        Dictionary<string, string> dataDictionary,
+        CancellationToken cancellationToken = default)
+    {
+        onExecute();
+        return Task.FromResult(new ComponentResult
+        {
+            Status = ComponentStatus.Failure,
+            Error = new ComponentError { ErrorCode = "BOOM", ErrorMessage = "iteration failed" }
+        });
     }
 }

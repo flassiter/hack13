@@ -19,6 +19,14 @@ public class WorkflowStep
     public FailurePolicy OnFailure { get; set; } = FailurePolicy.Abort;
     public RetryConfig? Retry { get; set; }
     public ConditionDefinition? Condition { get; set; }
+    public ForeachConfig? Foreach { get; set; }
+    public List<WorkflowStep>? SubSteps { get; set; }
+}
+
+public class ForeachConfig
+{
+    public string RowsKey { get; set; } = "db_rows";
+    public string? RowPrefix { get; set; }
 }
 
 public class RetryConfig

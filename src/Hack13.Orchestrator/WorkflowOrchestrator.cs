@@ -55,116 +55,44 @@ public sealed class WorkflowOrchestrator
             if (step.Condition != null && !ConditionEvaluator.Evaluate(step.Condition, dataDictionary))
             {
                 dataDictionary["_step_status"] = "skipped";
-                var skippedSummary = new StepExecutionSummary
+                summary.Steps.Add(new StepExecutionSummary
                 {
                     StepName = step.StepName,
                     ComponentType = step.ComponentType,
                     Status = ComponentStatus.Skipped,
                     DurationMs = 0
-                };
-                summary.Steps.Add(skippedSummary);
+                });
                 EmitProgress(workflow.WorkflowId, step, StepProgressState.Skipped);
                 continue;
             }
 
-            var retryPolicy = GetRetrySettings(step);
-            var didSucceed = false;
-            ComponentResult? lastFailure = null;
-
-            for (var attempt = 1; attempt <= retryPolicy.MaxAttempts; attempt++)
+            StepExecutionSummary stepSummary;
+            if (string.Equals(step.ComponentType, "foreach", StringComparison.OrdinalIgnoreCase))
             {
-                cancellationToken.ThrowIfCancellationRequested();
-                var stepTimer = Stopwatch.StartNew();
-                EmitProgress(workflow.WorkflowId, step, StepProgressState.Running, attempt, retryPolicy.MaxAttempts);
-                ComponentResult result;
-                try
-                {
-                    var componentConfig = LoadComponentConfiguration(step, workflowPath, dataDictionary);
-                    var component = _registry.Create(step.ComponentType);
-                    result = await component.ExecuteAsync(componentConfig, dataDictionary, cancellationToken);
-                }
-                catch (OperationCanceledException)
-                {
-                    throw;
-                }
-                catch (Exception ex)
-                {
-                    result = new ComponentResult
-                    {
-                        Status = ComponentStatus.Failure,
-                        Error = new ComponentError
-                        {
-                            ErrorCode = "STEP_EXCEPTION",
-                            ErrorMessage = ex.Message,
-                            StepDetail = step.StepName
-                        }
-                    };
-                }
-                finally
-                {
-                    stepTimer.Stop();
-                }
-
-                if (result.Status == ComponentStatus.Success)
-                {
-                    foreach (var (key, value) in result.OutputData)
-                        dataDictionary[key] = value;
-
-                    dataDictionary["_step_status"] = "success";
-                    summary.Steps.Add(new StepExecutionSummary
-                    {
-                        StepName = step.StepName,
-                        ComponentType = step.ComponentType,
-                        Status = ComponentStatus.Success,
-                        DurationMs = stepTimer.ElapsedMilliseconds + result.DurationMs,
-                        Error = result.Error
-                    });
-                    EmitProgress(workflow.WorkflowId, step, StepProgressState.Succeeded, attempt, retryPolicy.MaxAttempts);
-                    didSucceed = true;
-                    break;
-                }
-
-                lastFailure = result;
-                var canRetry = step.OnFailure == FailurePolicy.Retry && attempt < retryPolicy.MaxAttempts;
-                if (canRetry)
-                {
-                    EmitProgress(
-                        workflow.WorkflowId,
-                        step,
-                        StepProgressState.Retrying,
-                        attempt,
-                        retryPolicy.MaxAttempts,
-                        result.Error?.ErrorMessage);
-
-                    if (retryPolicy.BackoffSeconds > 0)
-                        await Task.Delay(TimeSpan.FromSeconds(retryPolicy.BackoffSeconds), cancellationToken);
-                    continue;
-                }
-
-                break;
+                EmitProgress(workflow.WorkflowId, step, StepProgressState.Running);
+                stepSummary = await ExecuteForeachAsync(step, workflowPath, workflow.WorkflowId, dataDictionary, cancellationToken);
+                EmitProgress(
+                    workflow.WorkflowId, step,
+                    stepSummary.Status == ComponentStatus.Success ? StepProgressState.Succeeded : StepProgressState.Failed,
+                    message: stepSummary.Error?.ErrorMessage);
+            }
+            else
+            {
+                stepSummary = await ExecuteStepWithRetryAsync(step, workflowPath, workflow.WorkflowId, dataDictionary, cancellationToken);
             }
 
-            if (didSucceed)
+            summary.Steps.Add(stepSummary);
+
+            if (stepSummary.Status == ComponentStatus.Success)
+            {
+                dataDictionary["_step_status"] = "success";
                 continue;
+            }
 
-            var error = lastFailure?.Error ?? new ComponentError
-            {
-                ErrorCode = "STEP_FAILED",
-                ErrorMessage = "Step execution failed."
-            };
-
-            var failedSummary = new StepExecutionSummary
-            {
-                StepName = step.StepName,
-                ComponentType = step.ComponentType,
-                Status = ComponentStatus.Failure,
-                DurationMs = lastFailure?.DurationMs ?? 0,
-                Error = error
-            };
-
-            summary.Steps.Add(failedSummary);
             dataDictionary["_step_status"] = "failed";
-            EmitProgress(workflow.WorkflowId, step, StepProgressState.Failed, message: error.ErrorMessage);
+
+            if (!string.Equals(step.ComponentType, "foreach", StringComparison.OrdinalIgnoreCase))
+                EmitProgress(workflow.WorkflowId, step, StepProgressState.Failed, message: stepSummary.Error?.ErrorMessage);
 
             if (step.OnFailure == FailurePolicy.LogAndContinue)
                 continue;
@@ -178,6 +106,247 @@ public sealed class WorkflowOrchestrator
         summary.CompletedAt = _options.Clock().UtcDateTime;
         summary.FinalDataDictionary = new Dictionary<string, string>(dataDictionary);
         return summary;
+    }
+
+    private async Task<StepExecutionSummary> ExecuteStepWithRetryAsync(
+        WorkflowStep step,
+        string workflowPath,
+        string workflowId,
+        Dictionary<string, string> dataDictionary,
+        CancellationToken cancellationToken)
+    {
+        var retryPolicy = GetRetrySettings(step);
+        ComponentResult? lastResult = null;
+
+        for (var attempt = 1; attempt <= retryPolicy.MaxAttempts; attempt++)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var stepTimer = Stopwatch.StartNew();
+            EmitProgress(workflowId, step, StepProgressState.Running, attempt, retryPolicy.MaxAttempts);
+
+            ComponentResult result;
+            try
+            {
+                var componentConfig = LoadComponentConfiguration(step, workflowPath, dataDictionary);
+                var component = _registry.Create(step.ComponentType);
+                result = await component.ExecuteAsync(componentConfig, dataDictionary, cancellationToken);
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                result = new ComponentResult
+                {
+                    Status = ComponentStatus.Failure,
+                    Error = new ComponentError
+                    {
+                        ErrorCode = "STEP_EXCEPTION",
+                        ErrorMessage = ex.Message,
+                        StepDetail = step.StepName
+                    }
+                };
+            }
+            finally
+            {
+                stepTimer.Stop();
+            }
+
+            if (result.Status == ComponentStatus.Success)
+            {
+                foreach (var (key, value) in result.OutputData)
+                    dataDictionary[key] = value;
+
+                EmitProgress(workflowId, step, StepProgressState.Succeeded, attempt, retryPolicy.MaxAttempts);
+                return new StepExecutionSummary
+                {
+                    StepName = step.StepName,
+                    ComponentType = step.ComponentType,
+                    Status = ComponentStatus.Success,
+                    DurationMs = stepTimer.ElapsedMilliseconds + result.DurationMs
+                };
+            }
+
+            lastResult = result;
+            var canRetry = step.OnFailure == FailurePolicy.Retry && attempt < retryPolicy.MaxAttempts;
+            if (canRetry)
+            {
+                EmitProgress(
+                    workflowId, step, StepProgressState.Retrying,
+                    attempt, retryPolicy.MaxAttempts,
+                    result.Error?.ErrorMessage);
+
+                if (retryPolicy.BackoffSeconds > 0)
+                    await Task.Delay(TimeSpan.FromSeconds(retryPolicy.BackoffSeconds), cancellationToken);
+                continue;
+            }
+
+            break;
+        }
+
+        var error = lastResult?.Error ?? new ComponentError
+        {
+            ErrorCode = "STEP_FAILED",
+            ErrorMessage = "Step execution failed."
+        };
+
+        return new StepExecutionSummary
+        {
+            StepName = step.StepName,
+            ComponentType = step.ComponentType,
+            Status = ComponentStatus.Failure,
+            DurationMs = lastResult?.DurationMs ?? 0,
+            Error = error
+        };
+    }
+
+    private async Task<StepExecutionSummary> ExecuteForeachAsync(
+        WorkflowStep step,
+        string workflowPath,
+        string workflowId,
+        Dictionary<string, string> dataDictionary,
+        CancellationToken cancellationToken)
+    {
+        var sw = Stopwatch.StartNew();
+        var foreachConfig = step.Foreach ?? new ForeachConfig();
+        var subSteps = step.SubSteps ?? new List<WorkflowStep>();
+        var iterations = new List<ForeachIterationSummary>();
+
+        if (!dataDictionary.TryGetValue(foreachConfig.RowsKey, out var rowsJson)
+            || string.IsNullOrWhiteSpace(rowsJson))
+        {
+            return new StepExecutionSummary
+            {
+                StepName = step.StepName,
+                ComponentType = step.ComponentType,
+                Status = ComponentStatus.Failure,
+                DurationMs = sw.ElapsedMilliseconds,
+                Error = new ComponentError
+                {
+                    ErrorCode = "FOREACH_ROWS_MISSING",
+                    ErrorMessage = $"Data dictionary key '{foreachConfig.RowsKey}' is missing or empty."
+                }
+            };
+        }
+
+        List<Dictionary<string, string>> rows;
+        try
+        {
+            rows = JsonSerializer.Deserialize<List<Dictionary<string, string>>>(rowsJson)
+                   ?? new List<Dictionary<string, string>>();
+        }
+        catch (JsonException ex)
+        {
+            return new StepExecutionSummary
+            {
+                StepName = step.StepName,
+                ComponentType = step.ComponentType,
+                Status = ComponentStatus.Failure,
+                DurationMs = sw.ElapsedMilliseconds,
+                Error = new ComponentError
+                {
+                    ErrorCode = "FOREACH_ROWS_INVALID",
+                    ErrorMessage = $"Failed to deserialize rows from '{foreachConfig.RowsKey}': {ex.Message}"
+                }
+            };
+        }
+
+        var rowPrefix = foreachConfig.RowPrefix ?? string.Empty;
+        var rowCount = rows.Count;
+        var overallStatus = ComponentStatus.Success;
+        ComponentError? firstError = null;
+
+        for (var i = 0; i < rows.Count; i++)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            // Isolated copy — sub-step output never leaks to the main dictionary or other iterations
+            var scopedDict = new Dictionary<string, string>(dataDictionary, StringComparer.OrdinalIgnoreCase);
+            scopedDict["_foreach_index"] = i.ToString();
+            scopedDict["_foreach_count"] = rowCount.ToString();
+
+            foreach (var (colKey, colValue) in rows[i])
+                scopedDict[$"{rowPrefix}{colKey}"] = colValue;
+
+            var iterationSw = Stopwatch.StartNew();
+            var iterationSteps = new List<StepExecutionSummary>();
+            var iterationStatus = ComponentStatus.Success;
+            ComponentError? iterationError = null;
+
+            foreach (var subStep in subSteps)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                scopedDict["_step_name"] = subStep.StepName;
+
+                if (subStep.Condition != null && !ConditionEvaluator.Evaluate(subStep.Condition, scopedDict))
+                {
+                    scopedDict["_step_status"] = "skipped";
+                    iterationSteps.Add(new StepExecutionSummary
+                    {
+                        StepName = subStep.StepName,
+                        ComponentType = subStep.ComponentType,
+                        Status = ComponentStatus.Skipped,
+                        DurationMs = 0
+                    });
+                    continue;
+                }
+
+                var subStepSummary = await ExecuteStepWithRetryAsync(
+                    subStep, workflowPath, workflowId, scopedDict, cancellationToken);
+                iterationSteps.Add(subStepSummary);
+
+                if (subStepSummary.Status != ComponentStatus.Success)
+                {
+                    scopedDict["_step_status"] = "failed";
+                    if (subStep.OnFailure == FailurePolicy.LogAndContinue)
+                        continue;
+
+                    // Sub-step aborted this iteration
+                    iterationStatus = ComponentStatus.Failure;
+                    iterationError = subStepSummary.Error;
+                    break;
+                }
+
+                scopedDict["_step_status"] = "success";
+            }
+
+            iterations.Add(new ForeachIterationSummary
+            {
+                RowIndex = i,
+                Status = iterationStatus,
+                DurationMs = iterationSw.ElapsedMilliseconds,
+                Steps = iterationSteps
+            });
+
+            if (iterationStatus == ComponentStatus.Failure)
+            {
+                firstError ??= iterationError;
+                overallStatus = ComponentStatus.Failure;
+
+                // Abort the foreach immediately unless the step says to log and continue
+                if (step.OnFailure != FailurePolicy.LogAndContinue)
+                    break;
+            }
+        }
+
+        sw.Stop();
+
+        return new StepExecutionSummary
+        {
+            StepName = step.StepName,
+            ComponentType = step.ComponentType,
+            Status = overallStatus,
+            DurationMs = sw.ElapsedMilliseconds,
+            Error = overallStatus == ComponentStatus.Failure
+                ? (firstError ?? new ComponentError
+                {
+                    ErrorCode = "FOREACH_FAILED",
+                    ErrorMessage = "One or more foreach iterations failed."
+                })
+                : null,
+            Iterations = iterations
+        };
     }
 
     private Dictionary<string, string> InitializeDataDictionary(

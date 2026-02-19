@@ -1,0 +1,17 @@
+{
+  "component_type": "database_reader",
+  "component_version": "1.0",
+  "description": "Query all loans from the PostgreSQL database and return them as a JSON array for iteration",
+  "config": {
+    "provider": "postgresql",
+    "connection_string": "Host={{db_host}};Port={{db_port}};Database={{db_name}};Username={{db_user}};Password={{db_password}};",
+    "query": "SELECT loan_number, borrower_name, co_borrower_name, property_address, city, state, zip_code, program_type, status, loan_type, loan_status, statute_of_limitations, original_loan_amount, current_balance, interest_rate, monthly_payment, escrow_balance, origination_date, maturity_date, last_payment_date, next_payment_due, property_value, ltv_ratio FROM loans WHERE loan_type = @loan_type ORDER BY loan_number",
+    "parameters": {
+      "loan_type": "{{filter_loan_type}}"
+    },
+    "command_timeout_seconds": 30,
+    "multi_row": true,
+    "rows_output_key": "db_rows",
+    "require_row": false
+  }
+}
