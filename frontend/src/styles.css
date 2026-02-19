@@ -45,11 +45,26 @@ label {
   font-weight: 600;
 }
 
-input {
+input, select {
   border: 1px solid #bfd1e5;
   border-radius: 10px;
   padding: 0.65rem;
   font: inherit;
+}
+
+.workflow-meta {
+  border: 1px solid #d8e4f0;
+  border-radius: 10px;
+  padding: 0.7rem;
+  background: #f7fbff;
+}
+
+.workflow-meta p {
+  margin: 0.2rem 0;
+}
+
+.workflow-meta-error {
+  color: #b5152f;
 }
 
 button {

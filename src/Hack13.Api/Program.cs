@@ -1,6 +1,8 @@
 using Hack13.Orchestrator;
 using Hack13.EmailSender;
+using Hack13.Contracts.Models;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Threading.Channels;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -15,6 +17,67 @@ var app = builder.Build();
 
 app.UseCors("frontend");
 app.UseHttpsRedirection();
+
+app.MapGet("/api/workflows", (IConfiguration config) =>
+{
+    var workflowsDirectory = config["Workflow:Directory"] ?? "configs/workflows";
+    if (!Directory.Exists(workflowsDirectory))
+        return Results.Ok(Array.Empty<WorkflowMetadata>());
+
+    var jsonOptions = new JsonSerializerOptions
+    {
+        PropertyNameCaseInsensitive = true,
+        PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
+        Converters = { new JsonStringEnumConverter(JsonNamingPolicy.SnakeCaseLower) }
+    };
+
+    var workflows = new List<WorkflowMetadata>();
+    foreach (var path in Directory.EnumerateFiles(workflowsDirectory, "*.json", SearchOption.TopDirectoryOnly))
+    {
+        var fileId = Path.GetFileNameWithoutExtension(path);
+        try
+        {
+            var json = File.ReadAllText(path);
+            var workflow = JsonSerializer.Deserialize<WorkflowDefinition>(json, jsonOptions)
+                ?? throw new InvalidOperationException("Workflow definition could not be parsed.");
+
+            var initialParameters = workflow.InitialParameters
+                .Where(parameter => !string.IsNullOrWhiteSpace(parameter))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+
+            var stepNames = workflow.Steps
+                .Select(step => step.StepName)
+                .Where(stepName => !string.IsNullOrWhiteSpace(stepName))
+                .ToArray();
+
+            workflows.Add(new WorkflowMetadata
+            {
+                Id = fileId,
+                WorkflowId = string.IsNullOrWhiteSpace(workflow.WorkflowId) ? fileId : workflow.WorkflowId,
+                WorkflowVersion = workflow.WorkflowVersion,
+                Description = workflow.Description,
+                LastModified = File.GetLastWriteTimeUtc(path),
+                InitialParameters = initialParameters,
+                StepCount = stepNames.Length,
+                StepNames = stepNames
+            });
+        }
+        catch (Exception ex)
+        {
+            workflows.Add(new WorkflowMetadata
+            {
+                Id = fileId,
+                WorkflowId = fileId,
+                LastModified = File.GetLastWriteTimeUtc(path),
+                ParseError = true,
+                ParseErrorMessage = ex.Message
+            });
+        }
+    }
+
+    return Results.Ok(workflows.OrderBy(workflow => workflow.Id, StringComparer.OrdinalIgnoreCase));
+});
 
 static WorkflowOrchestrator CreateOrchestrator(IConfiguration config, Action<StepProgressUpdate>? callback = null)
 {
@@ -172,4 +235,18 @@ static async Task WriteSseEventAsync(HttpResponse response, string eventName, ob
 public sealed class ExecuteWorkflowRequest
 {
     public Dictionary<string, string>? Parameters { get; set; }
+}
+
+public sealed class WorkflowMetadata
+{
+    public string Id { get; set; } = string.Empty;
+    public string WorkflowId { get; set; } = string.Empty;
+    public string WorkflowVersion { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
+    public DateTime LastModified { get; set; }
+    public string[] InitialParameters { get; set; } = [];
+    public int StepCount { get; set; }
+    public string[] StepNames { get; set; } = [];
+    public bool ParseError { get; set; }
+    public string? ParseErrorMessage { get; set; }
 }
