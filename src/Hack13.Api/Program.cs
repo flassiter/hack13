@@ -51,6 +51,8 @@ app.MapGet("/api/workflows", (IConfiguration config) =>
                 .Where(stepName => !string.IsNullOrWhiteSpace(stepName))
                 .ToArray();
 
+            var componentInfo = CollectComponentInfo(workflow, path);
+
             workflows.Add(new WorkflowMetadata
             {
                 Id = fileId,
@@ -60,7 +62,12 @@ app.MapGet("/api/workflows", (IConfiguration config) =>
                 LastModified = File.GetLastWriteTimeUtc(path),
                 InitialParameters = initialParameters,
                 StepCount = stepNames.Length,
-                StepNames = stepNames
+                StepNames = stepNames,
+                ComponentTypes = componentInfo.ComponentTypes
+                    .OrderBy(ct => ct, StringComparer.OrdinalIgnoreCase).ToArray(),
+                PdfTemplates = componentInfo.PdfTemplates
+                    .Distinct(StringComparer.OrdinalIgnoreCase).ToArray(),
+                HasEmailSender = componentInfo.HasEmailSender
             });
         }
         catch (Exception ex)
@@ -224,6 +231,66 @@ app.MapGet("/health", () => Results.Ok(new { status = "ok", at = DateTimeOffset.
 
 app.Run();
 
+static WorkflowComponentSummary CollectComponentInfo(WorkflowDefinition workflow, string workflowPath)
+{
+    var summary = new WorkflowComponentSummary();
+    CollectFromSteps(workflow.Steps, workflowPath, summary);
+    return summary;
+}
+
+static void CollectFromSteps(List<WorkflowStep> steps, string workflowPath, WorkflowComponentSummary summary)
+{
+    foreach (var step in steps)
+    {
+        var ct = step.ComponentType?.Trim() ?? "";
+        if (!string.IsNullOrWhiteSpace(ct))
+            summary.ComponentTypes.Add(ct);
+
+        if (string.Equals(ct, "email_sender", StringComparison.OrdinalIgnoreCase))
+            summary.HasEmailSender = true;
+
+        if (string.Equals(ct, "pdf_generator", StringComparison.OrdinalIgnoreCase)
+            && !string.IsNullOrWhiteSpace(step.ComponentConfig))
+        {
+            var templateId = TryExtractPdfTemplateId(step.ComponentConfig, workflowPath);
+            if (!string.IsNullOrWhiteSpace(templateId) && !templateId.Contains("{{"))
+                summary.PdfTemplates.Add(templateId);
+        }
+
+        if (step.SubSteps?.Count > 0)
+            CollectFromSteps(step.SubSteps, workflowPath, summary);
+    }
+}
+
+static string? TryExtractPdfTemplateId(string componentConfigRelPath, string workflowPath)
+{
+    try
+    {
+        var workflowDir = Path.GetDirectoryName(Path.GetFullPath(workflowPath));
+        if (workflowDir == null) return null;
+        var configPath = Path.GetFullPath(Path.Combine(workflowDir, componentConfigRelPath));
+        if (!File.Exists(configPath)) return null;
+
+        using var doc = JsonDocument.Parse(File.ReadAllText(configPath));
+        var root = doc.RootElement;
+
+        // Envelope format: { "config": { "template_id": "..." } }
+        if (root.TryGetProperty("config", out var configEl)
+            && configEl.TryGetProperty("template_id", out var tid))
+            return tid.GetString();
+
+        // Direct format: { "template_id": "..." }
+        if (root.TryGetProperty("template_id", out var directTid))
+            return directTid.GetString();
+
+        return null;
+    }
+    catch
+    {
+        return null;
+    }
+}
+
 static async Task WriteSseEventAsync(HttpResponse response, string eventName, object payload, CancellationToken cancellationToken)
 {
     var json = JsonSerializer.Serialize(payload);
@@ -247,6 +314,16 @@ public sealed class WorkflowMetadata
     public string[] InitialParameters { get; set; } = [];
     public int StepCount { get; set; }
     public string[] StepNames { get; set; } = [];
+    public string[] ComponentTypes { get; set; } = [];
+    public string[] PdfTemplates { get; set; } = [];
+    public bool HasEmailSender { get; set; }
     public bool ParseError { get; set; }
     public string? ParseErrorMessage { get; set; }
+}
+
+sealed class WorkflowComponentSummary
+{
+    public HashSet<string> ComponentTypes { get; } = new(StringComparer.OrdinalIgnoreCase);
+    public List<string> PdfTemplates { get; } = [];
+    public bool HasEmailSender { get; set; }
 }
