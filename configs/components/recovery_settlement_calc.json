@@ -1,0 +1,23 @@
+{
+  "component_type": "calculate",
+  "component_version": "1.0",
+  "description": "Calculate the settlement offer amount. First multiplies the outstanding balance by the discount rate to get the discount amount, then subtracts that from the balance to produce the final settlement offer.",
+  "config": {
+    "calculations": [
+      {
+        "name": "discount_amount",
+        "output_key": "discount_amount",
+        "operation": "multiply",
+        "inputs": ["loan_current_balance", "discount_rate"],
+        "format": { "decimal_places": 2 }
+      },
+      {
+        "name": "settlement_offer",
+        "output_key": "settlement_offer",
+        "operation": "subtract",
+        "inputs": ["loan_current_balance", "discount_amount"],
+        "format": { "decimal_places": 2 }
+      }
+    ]
+  }
+}

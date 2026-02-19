@@ -100,6 +100,26 @@
         "mortgage_insurance"
       ],
       "default_filename_pattern": "escrow_statement_{{loan_number}}_{{statement_date}}.pdf"
+    },
+    {
+      "template_id": "recovery_settlement_letter",
+      "file_path": "./recovery_settlement_letter.html",
+      "required_fields": [
+        "loan_borrower_name",
+        "loan_property_address",
+        "loan_city",
+        "loan_state",
+        "loan_zip_code",
+        "loan_current_balance",
+        "settlement_offer",
+        "representative_name",
+        "loan_loan_number"
+      ],
+      "optional_fields": [
+        "loan_co_borrower_name",
+        "discount_label"
+      ],
+      "default_filename_pattern": "settlement_{{loan_loan_number}}.pdf"
     }
   ]
 }

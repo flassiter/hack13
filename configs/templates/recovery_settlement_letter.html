@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      font-size: 12pt;
+      margin: 0;
+      padding: 0;
+      color: #000;
+    }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 8px;
+    }
+    .company-name {
+      font-size: 13pt;
+      font-weight: bold;
+    }
+    .company-tagline {
+      font-size: 9pt;
+      color: #555;
+    }
+    .address-block {
+      font-size: 10pt;
+      text-align: right;
+      line-height: 1.5;
+    }
+    .divider {
+      border-top: 1px solid #000;
+      margin: 4px 0 8px 0;
+    }
+    .return-service {
+      font-size: 10pt;
+      letter-spacing: 0.05em;
+      margin-bottom: 16px;
+    }
+    .letter-date {
+      text-align: right;
+      margin-bottom: 24px;
+    }
+    .recipient-block {
+      margin-bottom: 24px;
+      line-height: 1.6;
+    }
+    .salutation {
+      margin-bottom: 12px;
+    }
+    p {
+      line-height: 1.6;
+      margin: 0 0 12px 0;
+    }
+    .balance-line {
+      font-weight: bold;
+      margin: 8px 0;
+      text-align: center;
+    }
+    .signature-gap {
+      margin-top: 48px;
+    }
+    .signature-block {
+      line-height: 1.6;
+    }
+    .legal-notice {
+      border: 1px solid #000;
+      padding: 8px 10px;
+      font-size: 9pt;
+      margin-top: 24px;
+      line-height: 1.4;
+    }
+    .footer-contact {
+      font-size: 9pt;
+      text-align: center;
+      margin-top: 6px;
+      line-height: 1.5;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <div>
+      <div class="company-name">Vanderbilt Mortgage and Finance, Inc.</div>
+      <div class="company-tagline">Mortgage and Finance, Inc.</div>
+    </div>
+    <div class="address-block">
+      PO Box 9800<br/>
+      Maryville, TN 37802<br/>
+      <br/>
+      500 Alcoa Trail<br/>
+      Maryville, TN 37804
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <div class="return-service">RETURN SERVICE REQUESTED</div>
+
+  <div class="letter-date">{{_started_at:date}}</div>
+
+  <div class="recipient-block">
+    {{loan_borrower_name}}{{#if loan_co_borrower_name}}<br/>{{loan_co_borrower_name}}{{/if}}<br/>
+    {{loan_property_address}}<br/>
+    {{loan_city}}, {{loan_state}} {{loan_zip_code}}
+  </div>
+
+  <p class="salutation">Dear {{loan_borrower_name}},</p>
+
+  <p>
+    Vanderbilt is willing to accept a reduced settlement on the outstanding balance due on this
+    loan. Please contact our office within thirty (30) days from the date of this letter to discuss
+    this settlement offer below.
+  </p>
+
+  <p class="balance-line">Remaining Balance: {{loan_current_balance:currency}}</p>
+
+  <p class="balance-line">Settlement Offer: {{settlement_offer:currency}}</p>
+
+  <p>
+    Following receipt of an agreed settlement amount, Vanderbilt will release applicable liens on the
+    property. In addition, if applicable, Vanderbilt will notify each of the national credit bureaus
+    to whom we report to that your account has a zero balance. Vanderbilt may be required to report
+    the amount of debt cancelled or forgiven as a result of this agreement to the IRS through a
+    1099-C form.
+  </p>
+
+  <p>
+    If you do not have the financial ability to offer a lump sum settlement at this time, Vanderbilt
+    offers flexible monthly payment options to fit your budget.
+  </p>
+
+  <p>Please contact us at (888) 285-0008.</p>
+
+  <p>Sincerely,</p>
+
+  <div class="signature-gap"></div>
+
+  <div class="signature-block">
+    {{representative_name}}<br/>
+    Recovery Representative<br/>
+    (888) 285-0008<br/>
+    Hours of Operation: Monday &ndash; Friday, 8:30 A.M. - 5:30 P.M. (ET)<br/>
+    CC: {{loan_loan_number}}
+  </div>
+
+  <div class="legal-notice">
+    <strong>The following notices are required by Federal law:</strong>
+    1. This is an attempt by a debt collector to collect a debt and any information obtained will be
+    used for that purpose.
+    2. To the extent your original obligation was discharged, or subject to an automatic stay under
+    the bankruptcy code, this statement is for informational purposes only and is not an attempt to
+    collect a debt or impose personal liability for a debt.
+  </div>
+
+  <div class="footer-contact">
+    Toll Free: 800.970.7250 &#9632; Phone: 865.380.3000 &#9632; Fax: 865.380.3418 &#9632;
+    www.VMF.com &#9632; NMLS # 1561<br/>
+    Office Hours: Monday &ndash; Thursday, 8:30 AM to 8:00 PM and Friday, 8:30 AM to 5:30 PM (ET)
+  </div>
+
+</body>
+</html>

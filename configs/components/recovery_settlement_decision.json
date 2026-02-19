@@ -1,0 +1,48 @@
+{
+  "component_type": "decision",
+  "component_version": "1.0",
+  "description": "Determine settlement discount tier for a recovery loan. Rules evaluate days_since_origination, current_balance, and statute_of_limitations (all numeric) using first_match. Field names carry the 'loan_' prefix injected by the foreach step.",
+  "config": {
+    "evaluation_mode": "first_match",
+    "rules": [
+      {
+        "rule_name": "high_urgency_40pct_discount",
+        "condition": {
+          "all_of": [
+            { "field": "loan_days_since_origination", "operator": "greater_than", "value": "730" },
+            { "field": "loan_current_balance", "operator": "less_than", "value": "100000" },
+            { "field": "loan_statute_of_limitations", "operator": "less_than", "value": "365" }
+          ]
+        },
+        "outputs": {
+          "discount_rate": "0.40",
+          "discount_label": "40% Settlement Discount"
+        }
+      },
+      {
+        "rule_name": "standard_10pct_discount",
+        "condition": {
+          "all_of": [
+            { "field": "loan_days_since_origination", "operator": "less_than", "value": "730" },
+            { "field": "loan_statute_of_limitations", "operator": "greater_than", "value": "365" }
+          ]
+        },
+        "outputs": {
+          "discount_rate": "0.10",
+          "discount_label": "10% Settlement Discount"
+        }
+      },
+      {
+        "rule_name": "default_10pct_discount",
+        "condition": {
+          "field": "loan_loan_number",
+          "operator": "is_not_empty"
+        },
+        "outputs": {
+          "discount_rate": "0.10",
+          "discount_label": "10% Settlement Discount"
+        }
+      }
+    ]
+  }
+}

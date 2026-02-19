@@ -1,0 +1,44 @@
+{
+  "workflow_id": "recovery_settlement",
+  "workflow_version": "1.0",
+  "description": "Query recovery loans (loan_status = R), determine settlement discount tier, calculate the offer amount, and generate a settlement letter for each borrower",
+  "initial_parameters": ["representative_name"],
+  "steps": [
+    {
+      "step_name": "query_recovery_loans",
+      "component_type": "database_reader",
+      "component_config": "../components/recovery_settlement_db_query.json",
+      "on_failure": "abort",
+      "retry": { "max_attempts": 2, "backoff_seconds": 1 }
+    },
+    {
+      "step_name": "process_each_loan",
+      "component_type": "foreach",
+      "foreach": {
+        "rows_key": "db_rows",
+        "row_prefix": "loan_"
+      },
+      "on_failure": "log_and_continue",
+      "sub_steps": [
+        {
+          "step_name": "determine_settlement_tier",
+          "component_type": "decision",
+          "component_config": "../components/recovery_settlement_decision.json",
+          "on_failure": "abort"
+        },
+        {
+          "step_name": "calculate_settlement_amount",
+          "component_type": "calculate",
+          "component_config": "../components/recovery_settlement_calc.json",
+          "on_failure": "abort"
+        },
+        {
+          "step_name": "generate_settlement_letter",
+          "component_type": "pdf_generator",
+          "component_config": "../components/recovery_settlement_letter.json",
+          "on_failure": "abort"
+        }
+      ]
+    }
+  ]
+}

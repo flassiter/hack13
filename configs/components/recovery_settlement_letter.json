@@ -1,0 +1,11 @@
+{
+  "component_type": "pdf_generator",
+  "component_version": "1.0",
+  "description": "Generate the recovery settlement offer letter PDF for the borrower",
+  "config": {
+    "template_id": "recovery_settlement_letter",
+    "template_registry_path": "configs/templates/template-registry.json",
+    "output_directory": "output/pdfs/recovery_settlement",
+    "filename_pattern": "settlement_{{loan_loan_number}}.pdf"
+  }
+}
