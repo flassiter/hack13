@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS loans (
     loan_type                CHAR(1)        NOT NULL,   -- A=active, R=recovery/bankruptcy
     loan_status              CHAR(1)        NOT NULL,   -- A=active, R=recovery ready (mirrors loan_type)
     statute_of_limitations   INTEGER,                   -- days allowed for recovery; populated only when loan_type = 'R'
+    assigned_to              VARCHAR(100),              -- recovery team member assigned to this loan; populated only when loan_type = 'R'
     original_loan_amount     NUMERIC(12,2)  NOT NULL,
     current_balance          NUMERIC(12,2)  NOT NULL,
     interest_rate            NUMERIC(5,3)   NOT NULL,
@@ -28,7 +29,8 @@ CREATE TABLE IF NOT EXISTS loans (
 
     CONSTRAINT chk_loan_type        CHECK (loan_type IN ('A', 'R')),
     CONSTRAINT chk_loan_status      CHECK (loan_status IN ('A', 'R')),
-    CONSTRAINT chk_sol_with_type    CHECK (loan_type = 'R' OR statute_of_limitations IS NULL),
+    CONSTRAINT chk_sol_with_type        CHECK (loan_type = 'R' OR statute_of_limitations IS NULL),
+    CONSTRAINT chk_assigned_with_type  CHECK (loan_type = 'R' OR assigned_to IS NULL),
     CONSTRAINT chk_status_matches   CHECK (loan_type = loan_status)
 );
 

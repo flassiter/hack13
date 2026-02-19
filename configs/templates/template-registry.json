@@ -112,7 +112,7 @@
         "loan_zip_code",
         "loan_current_balance",
         "settlement_offer",
-        "representative_name",
+        "loan_assigned_to",
         "loan_loan_number"
       ],
       "optional_fields": [

@@ -2,7 +2,7 @@
   "workflow_id": "recovery_settlement",
   "workflow_version": "1.0",
   "description": "Query recovery loans (loan_status = R), determine settlement discount tier, calculate the offer amount, and generate a settlement letter for each borrower",
-  "initial_parameters": ["representative_name"],
+  "initial_parameters": [],
   "steps": [
     {
       "step_name": "query_recovery_loans",

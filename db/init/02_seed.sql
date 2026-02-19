@@ -1612,6 +1612,19 @@ INSERT INTO loans (
      '2026-01-15', '2026-02-01',
      584748.42, 56.71);
 
+-- Assign recovery team members to all recovery loans (loan_type = 'R')
+UPDATE loans SET assigned_to = 'Sarah Mitchell'
+  WHERE loan_number IN ('2000007', '2000008', '2000009', '2000023', '2000024');
+
+UPDATE loans SET assigned_to = 'James Carter'
+  WHERE loan_number IN ('2000027', '2000029', '2000036', '2000056', '2000058');
+
+UPDATE loans SET assigned_to = 'Rachel Torres'
+  WHERE loan_number IN ('2000060', '2000063', '2000071', '2000109', '2000140');
+
+UPDATE loans SET assigned_to = 'David Nguyen'
+  WHERE loan_number IN ('2000152', '2000164', '2000174', '2000189', '2000190');
+
 -- Verify counts
 -- SELECT loan_type, loan_status, COUNT(*) FROM loans GROUP BY loan_type, loan_status;
 -- SELECT status, COUNT(*) FROM loans GROUP BY status ORDER BY status;

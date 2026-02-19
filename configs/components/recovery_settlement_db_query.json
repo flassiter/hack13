@@ -5,7 +5,7 @@
   "config": {
     "provider": "postgresql",
     "connection_string": "Host={{db_host}};Port={{db_port}};Database={{db_name}};Username={{db_user}};Password={{db_password}};",
-    "query": "SELECT loan_number, borrower_name, co_borrower_name, property_address, city, state, zip_code, current_balance, origination_date, statute_of_limitations, (CURRENT_DATE - origination_date)::INTEGER AS days_since_origination FROM loans WHERE loan_status = 'R' ORDER BY loan_number",
+    "query": "SELECT loan_number, borrower_name, co_borrower_name, property_address, city, state, zip_code, current_balance, origination_date, statute_of_limitations, assigned_to, (CURRENT_DATE - origination_date)::INTEGER AS days_since_origination FROM loans WHERE loan_status = 'R' ORDER BY loan_number",
     "command_timeout_seconds": 30,
     "multi_row": true,
     "rows_output_key": "db_rows",
