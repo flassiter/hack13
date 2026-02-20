@@ -367,3 +367,55 @@ button:disabled {
   opacity: 0.72;
   text-align: center;
 }
+
+/* ── Explain Panel ───────────────────────────────────────────────── */
+.explain-panel {
+  min-height: 200px;
+  padding: 0.5rem 0;
+}
+
+.explain-text {
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 0.9rem;
+  line-height: 1.65;
+  color: #12263a;
+  margin: 0;
+  background: #f7fbff;
+  border: 1px solid #dce8f5;
+  border-radius: 10px;
+  padding: 1rem 1.2rem;
+}
+
+.explain-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  color: #5c6773;
+  font-size: 0.9rem;
+  min-height: 200px;
+}
+
+.explain-spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid #dce8f5;
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.explain-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #8a9bb0;
+  font-size: 0.9rem;
+}
