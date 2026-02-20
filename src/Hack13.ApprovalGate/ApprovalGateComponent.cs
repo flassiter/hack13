@@ -47,6 +47,12 @@ public class ApprovalGateComponent : IComponent
                 return Failure("CONFIG_ERROR", "Required field 'approved_value' is missing.", sw);
 
             var resolvedUrl = PlaceholderResolver.Resolve(agConfig.PollUrl, dataDictionary);
+            var endpointValidation = await HttpEndpointGuard.ValidateOutboundHttpEndpointAsync(
+                resolvedUrl,
+                agConfig.AllowPrivateNetwork,
+                cancellationToken);
+            if (!endpointValidation.IsAllowed)
+                return Failure("CONFIG_ERROR", endpointValidation.Error ?? "Endpoint validation failed.", sw);
 
             var resolvedHeaders = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             if (agConfig.PollHeaders != null)
@@ -113,7 +119,20 @@ public class ApprovalGateComponent : IComponent
 
                 if (responseBody != null)
                 {
-                    var approvedVal = ExtractJsonValue(responseBody, agConfig.ApprovedPath);
+                    if (!SimpleJsonPath.TryExtract(
+                            responseBody,
+                            agConfig.ApprovedPath,
+                            out var approvedVal,
+                            out var approvedPathError))
+                    {
+                        WriteStatus(outputData, dataDictionary, "error", pollCount);
+                        return FailureWithOutput(
+                            "RESPONSE_PARSE_ERROR",
+                            $"Failed to evaluate approved_path '{agConfig.ApprovedPath}': {approvedPathError}",
+                            sw,
+                            outputData);
+                    }
+
                     if (string.Equals(approvedVal, agConfig.ApprovedValue, StringComparison.OrdinalIgnoreCase))
                     {
                         WriteStatus(outputData, dataDictionary, "approved", pollCount);
@@ -124,7 +143,20 @@ public class ApprovalGateComponent : IComponent
                     if (!string.IsNullOrWhiteSpace(agConfig.RejectedPath) &&
                         !string.IsNullOrWhiteSpace(agConfig.RejectedValue))
                     {
-                        var rejectedVal = ExtractJsonValue(responseBody, agConfig.RejectedPath);
+                        if (!SimpleJsonPath.TryExtract(
+                                responseBody,
+                                agConfig.RejectedPath,
+                                out var rejectedVal,
+                                out var rejectedPathError))
+                        {
+                            WriteStatus(outputData, dataDictionary, "error", pollCount);
+                            return FailureWithOutput(
+                                "RESPONSE_PARSE_ERROR",
+                                $"Failed to evaluate rejected_path '{agConfig.RejectedPath}': {rejectedPathError}",
+                                sw,
+                                outputData);
+                        }
+
                         if (string.Equals(rejectedVal, agConfig.RejectedValue, StringComparison.OrdinalIgnoreCase))
                         {
                             WriteStatus(outputData, dataDictionary, "rejected", pollCount);
@@ -167,56 +199,6 @@ public class ApprovalGateComponent : IComponent
         dataDictionary["approval_status"] = status;
         outputData["approval_poll_count"] = pollCount.ToString();
         dataDictionary["approval_poll_count"] = pollCount.ToString();
-    }
-
-    private static string? ExtractJsonValue(string json, string path)
-    {
-        try
-        {
-            using var doc = JsonDocument.Parse(json);
-            var normalizedPath = path.StartsWith("$.") ? path[2..]
-                : path.TrimStart('$').TrimStart('.');
-
-            if (string.IsNullOrEmpty(normalizedPath))
-                return doc.RootElement.GetRawText();
-
-            var current = doc.RootElement;
-
-            foreach (var segment in normalizedPath.Split('.'))
-            {
-                var bracketPos = segment.IndexOf('[');
-                if (bracketPos >= 0)
-                {
-                    var propName = segment[..bracketPos];
-                    var endBracket = segment.IndexOf(']', bracketPos);
-                    var idx = int.Parse(segment[(bracketPos + 1)..endBracket]);
-
-                    if (!string.IsNullOrEmpty(propName))
-                    {
-                        if (!current.TryGetProperty(propName, out current))
-                            return null;
-                    }
-
-                    if (current.ValueKind != JsonValueKind.Array || idx >= current.GetArrayLength())
-                        return null;
-
-                    current = current[idx];
-                }
-                else
-                {
-                    if (!current.TryGetProperty(segment, out current))
-                        return null;
-                }
-            }
-
-            return current.ValueKind == JsonValueKind.String
-                ? current.GetString()
-                : current.GetRawText();
-        }
-        catch
-        {
-            return null;
-        }
     }
 
     private static ComponentResult Success(Dictionary<string, string> outputData, List<LogEntry> logs, Stopwatch sw) =>

@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using Hack13.HttpClient;
 using Hack13.Contracts.Enums;
 using Hack13.Contracts.Models;
@@ -25,8 +26,17 @@ public class HttpClientComponentTests : IDisposable
     {
         ComponentType = "http_client",
         ComponentVersion = "1.0",
-        Config = JsonDocument.Parse(json).RootElement
+        Config = JsonDocument.Parse(
+            WithPrivateNetworkEnabled((JsonObject)JsonNode.Parse(json)!)
+            .ToJsonString())
+            .RootElement
     };
+
+    private static JsonObject WithPrivateNetworkEnabled(JsonObject obj)
+    {
+        obj["allow_private_network"] = true;
+        return obj;
+    }
 
     // -------------------------------------------------------------------------
     // 1. GET success — status written, body written to default key
@@ -384,5 +394,29 @@ public class HttpClientComponentTests : IDisposable
         Assert.Equal(ComponentStatus.Success, result.Status);
         Assert.Equal("first", data["first_item"]);
         Assert.Equal("second", data["second_item"]);
+    }
+
+    [Fact]
+    public async Task PrivateNetworkBlocked_WhenAllowPrivateNetworkIsFalse()
+    {
+        var component = new HttpClientComponent();
+        var config = new ComponentConfiguration
+        {
+            ComponentType = "http_client",
+            ComponentVersion = "1.0",
+            Config = JsonDocument.Parse($$"""
+                {
+                  "method": "GET",
+                  "url": "{{BaseUrl}}/api/test",
+                  "allow_private_network": false
+                }
+                """).RootElement
+        };
+        var data = new Dictionary<string, string>();
+
+        var result = await component.ExecuteAsync(config, data);
+
+        Assert.Equal(ComponentStatus.Failure, result.Status);
+        Assert.Equal("CONFIG_ERROR", result.Error?.ErrorCode);
     }
 }

@@ -92,7 +92,8 @@ dotnet run --project src/Hack13.Api
 | `POST` | `/api/workflows/{workflowId}/execute` | Execute a workflow synchronously — returns the full `WorkflowExecutionSummary` |
 | `GET` | `/api/workflows/{workflowId}/execute-stream` | Execute a workflow with SSE streaming — emits `progress`, `summary`, and `workflow_error` events |
 | `GET` | `/api/workflows/{workflowId}/definition` | Return the raw workflow JSON |
-| `PUT` | `/api/workflows/{workflowId}/definition` | Overwrite the workflow JSON on disk |
+| `PUT` | `/api/workflows/{workflowId}/definition` | Overwrite the workflow JSON on disk (admin token required by default) |
+| `GET` | `/api/workflows/{workflowId}/explain` | Generate a natural-language workflow explanation via Bedrock (admin token required by default) |
 | `GET` | `/api/files/pdf?path=...` | Download a generated PDF from the `output/` directory |
 | `GET` | `/health` | Health check |
 
@@ -111,6 +112,11 @@ dotnet run --project src/Hack13.Api
 - `progress` — emitted as each step starts, retries, or completes: `{ stepName, componentType, state, attempt, maxAttempts, message }`
 - `summary` — emitted at workflow completion: full `WorkflowExecutionSummary` JSON
 - `workflow_error` — emitted on a fatal error before any result: `{ message }`
+
+Security defaults:
+- CORS is restricted to `Cors:AllowedOrigins` (defaults to local frontend origins).
+- Mutating workflow definitions and calling explain require `Api:AdminToken` by default.
+- Provide token via `X-Api-Key: <token>` or `Authorization: Bearer <token>`.
 
 ### Frontend
 

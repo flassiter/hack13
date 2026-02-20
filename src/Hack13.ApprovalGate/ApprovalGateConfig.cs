@@ -3,6 +3,7 @@ namespace Hack13.ApprovalGate;
 internal sealed class ApprovalGateConfig
 {
     public string PollUrl { get; set; } = string.Empty;
+    public bool AllowPrivateNetwork { get; set; }
     public string PollMethod { get; set; } = "GET";
     public Dictionary<string, string>? PollHeaders { get; set; }
     public int PollIntervalSeconds { get; set; } = 30;

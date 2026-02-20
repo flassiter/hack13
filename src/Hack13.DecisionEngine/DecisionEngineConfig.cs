@@ -16,6 +16,7 @@ internal class RuleDefinition
 internal class ConditionDefinition
 {
     // Simple condition
+    public string? Key { get; set; }
     public string? Field { get; set; }
     public string? Operator { get; set; }
     public string? Value { get; set; }

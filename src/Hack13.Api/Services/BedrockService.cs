@@ -2,6 +2,7 @@ using Amazon;
 using Amazon.BedrockRuntime;
 using Amazon.BedrockRuntime.Model;
 using Hack13.Contracts.Models;
+using Hack13.Orchestrator;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -83,10 +84,9 @@ public class BedrockService : IDisposable
 
     private static string BuildContext(string workflowPath, string workflowJson, WorkflowDefinition workflow)
     {
-        var workflowDir = Path.GetDirectoryName(workflowPath)!;
         var componentSections = new List<string>();
 
-        CollectSteps(workflow.Steps, workflowDir, componentSections);
+        CollectSteps(workflow.Steps, workflowPath, componentSections);
 
         var sb = new StringBuilder();
         sb.AppendLine("## Workflow Definition");
@@ -106,22 +106,32 @@ public class BedrockService : IDisposable
         return sb.ToString();
     }
 
-    private static void CollectSteps(IEnumerable<WorkflowStep> steps, string workflowDir, List<string> sections)
+    private static void CollectSteps(IEnumerable<WorkflowStep> steps, string workflowPath, List<string> sections)
     {
         foreach (var step in steps)
         {
             if (!string.IsNullOrWhiteSpace(step.ComponentConfig))
             {
-                var componentPath = Path.GetFullPath(Path.Combine(workflowDir, step.ComponentConfig));
-                if (File.Exists(componentPath))
+                try
                 {
-                    var componentJson = File.ReadAllText(componentPath);
-                    sections.Add($"### Component config for step \"{step.StepName}\" ({step.ComponentType})\n```json\n{componentJson}\n```");
+                    var componentPath = WorkflowLoader.ResolveComponentConfigPath(
+                        step.ComponentConfig,
+                        new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase),
+                        workflowPath);
+                    if (File.Exists(componentPath))
+                    {
+                        var componentJson = File.ReadAllText(componentPath);
+                        sections.Add($"### Component config for step \"{step.StepName}\" ({step.ComponentType})\n```json\n{componentJson}\n```");
+                    }
+                }
+                catch (InvalidOperationException)
+                {
+                    // Skip component configs that resolve outside of allowed workflow config roots.
                 }
             }
 
             if (step.SubSteps is { Count: > 0 })
-                CollectSteps(step.SubSteps, workflowDir, sections);
+                CollectSteps(step.SubSteps, workflowPath, sections);
         }
     }
 

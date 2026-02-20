@@ -521,6 +521,29 @@ public class WorkflowOrchestratorTests : IDisposable
         Assert.Equal("2", capturedDicts[1]["_foreach_count"]);
     }
 
+    [Fact]
+    public async Task ExecuteAsync_ComponentConfigPathEscape_Throws()
+    {
+        var parentPath = Path.GetFullPath(Path.Combine(_tempDir, "..", "outside.json"));
+        File.WriteAllText(parentPath, """{ "status": "success" }""");
+
+        var workflowPath = WriteWorkflow("""
+            {
+              "workflow_id": "wf-path-escape",
+              "workflow_version": "1.0",
+              "steps": [
+                { "step_name": "escaped", "component_type": "test_component", "component_config": "../outside.json" }
+              ]
+            }
+            """);
+
+        var orchestrator = CreateOrchestrator(
+            new ComponentRegistry().Register("test_component", () => new ScriptedComponent()));
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            orchestrator.ExecuteAsync(workflowPath, new Dictionary<string, string>()));
+    }
+
     private WorkflowOrchestrator CreateOrchestrator(
         ComponentRegistry registry,
         WorkflowOrchestratorOptions? options = null) =>

@@ -84,13 +84,20 @@ public sealed class WorkflowLoader
         string workflowPath)
     {
         var resolved = PlaceholderResolver.Resolve(configuredPath, dataDictionary);
-        if (Path.IsPathRooted(resolved))
-            return resolved;
-
         var workflowDir = Path.GetDirectoryName(Path.GetFullPath(workflowPath))
             ?? Directory.GetCurrentDirectory();
+        var configRoot = DetermineConfigRootDirectory(workflowDir);
+        var resolvedPath = Path.IsPathRooted(resolved)
+            ? Path.GetFullPath(resolved)
+            : Path.GetFullPath(Path.Combine(workflowDir, resolved));
 
-        return Path.GetFullPath(Path.Combine(workflowDir, resolved));
+        if (!IsPathWithinDirectory(resolvedPath, configRoot))
+        {
+            throw new InvalidOperationException(
+                $"Component config path '{configuredPath}' resolves outside the allowed config root '{configRoot}'.");
+        }
+
+        return resolvedPath;
     }
 
     private static void ValidateStructure(WorkflowDefinition workflow)
@@ -152,5 +159,27 @@ public sealed class WorkflowLoader
         }
 
         return false;
+    }
+
+    private static string DetermineConfigRootDirectory(string workflowDirectory)
+    {
+        var workflowDir = Path.GetFullPath(workflowDirectory);
+        var parentDir = Directory.GetParent(workflowDir)?.FullName;
+        if (parentDir != null && Directory.Exists(Path.Combine(parentDir, "components")))
+            return parentDir;
+
+        return workflowDir;
+    }
+
+    private static bool IsPathWithinDirectory(string candidatePath, string directoryPath)
+    {
+        var fullDirectoryPath = Path.GetFullPath(directoryPath).TrimEnd(Path.DirectorySeparatorChar) +
+                                Path.DirectorySeparatorChar;
+        var fullCandidatePath = Path.GetFullPath(candidatePath);
+        var comparison = OperatingSystem.IsWindows()
+            ? StringComparison.OrdinalIgnoreCase
+            : StringComparison.Ordinal;
+
+        return fullCandidatePath.StartsWith(fullDirectoryPath, comparison);
     }
 }

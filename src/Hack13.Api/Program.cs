@@ -11,7 +11,17 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("frontend", policy =>
-        policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod());
+    {
+        var configuredOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>();
+        var origins = configuredOrigins is { Length: > 0 }
+            ? configuredOrigins
+            : ["http://localhost:8080", "http://127.0.0.1:8080"];
+
+        if (origins.Contains("*"))
+            policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod();
+        else
+            policy.WithOrigins(origins).AllowAnyHeader().AllowAnyMethod();
+    });
 });
 
 builder.Services.AddSingleton<BedrockService>();
@@ -21,7 +31,7 @@ var app = builder.Build();
 app.UseCors("frontend");
 app.UseHttpsRedirection();
 
-app.MapGet("/api/workflows", (IConfiguration config) =>
+app.MapGet("/api/workflows", (IConfiguration config, ILogger<Program> logger) =>
 {
     var workflowsDirectory = config["Workflow:Directory"] ?? "configs/workflows";
     if (!Directory.Exists(workflowsDirectory))
@@ -75,13 +85,14 @@ app.MapGet("/api/workflows", (IConfiguration config) =>
         }
         catch (Exception ex)
         {
+            logger.LogWarning(ex, "Failed to parse workflow metadata for {WorkflowPath}", path);
             workflows.Add(new WorkflowMetadata
             {
                 Id = fileId,
                 WorkflowId = fileId,
                 LastModified = File.GetLastWriteTimeUtc(path),
                 ParseError = true,
-                ParseErrorMessage = ex.Message
+                ParseErrorMessage = "Workflow definition could not be parsed."
             });
         }
     }
@@ -107,6 +118,7 @@ app.MapPost("/api/workflows/{workflowId}/execute", async (
     string workflowId,
     ExecuteWorkflowRequest request,
     IConfiguration config,
+    ILogger<Program> logger,
     CancellationToken cancellationToken) =>
 {
     var workflowsDirectory = config["Workflow:Directory"] ?? "configs/workflows";
@@ -131,9 +143,10 @@ app.MapPost("/api/workflows/{workflowId}/execute", async (
     }
     catch (Exception ex)
     {
+        logger.LogError(ex, "Workflow execution failed for {WorkflowId}", workflowId);
         return Results.BadRequest(new
         {
-            message = ex.Message
+            message = "Workflow execution failed."
         });
     }
 });
@@ -143,6 +156,7 @@ app.MapGet("/api/workflows/{workflowId}/execute-stream", async (
     HttpRequest request,
     HttpResponse response,
     IConfiguration config,
+    ILogger<Program> logger,
     CancellationToken cancellationToken) =>
 {
     response.Headers.CacheControl = "no-cache";
@@ -202,7 +216,8 @@ app.MapGet("/api/workflows/{workflowId}/execute-stream", async (
         var (summary, error) = await executeTask;
         if (error != null)
         {
-            await WriteSseEventAsync(response, "workflow_error", new { message = error.Message }, cancellationToken);
+            logger.LogError(error, "Workflow stream execution failed for {WorkflowId}", workflowId);
+            await WriteSseEventAsync(response, "workflow_error", new { message = "Workflow execution failed." }, cancellationToken);
             return;
         }
 
@@ -227,6 +242,9 @@ app.MapGet("/api/workflows/{workflowId}/definition", (string workflowId, IConfig
 
 app.MapPut("/api/workflows/{workflowId}/definition", async (string workflowId, HttpRequest request, IConfiguration config) =>
 {
+    if (RequiresAdminAuth(config, "WorkflowDefinitionWrite") && !IsAuthorized(request, config))
+        return Results.Unauthorized();
+
     var workflowsDirectory = config["Workflow:Directory"] ?? "configs/workflows";
     var workflowPath = WorkflowPathResolver.ResolveById(workflowsDirectory, workflowId);
     if (workflowPath == null)
@@ -272,11 +290,15 @@ app.MapGet("/api/files/pdf", (string path) =>
 
 app.MapGet("/api/workflows/{workflowId}/explain", async (
     string workflowId,
+    HttpRequest request,
     BedrockService bedrockService,
     ILogger<Program> logger,
     IConfiguration config,
     CancellationToken cancellationToken) =>
 {
+    if (RequiresAdminAuth(config, "WorkflowExplain") && !IsAuthorized(request, config))
+        return Results.Unauthorized();
+
     var workflowsDirectory = config["Workflow:Directory"] ?? "configs/workflows";
     var workflowPath = WorkflowPathResolver.ResolveById(workflowsDirectory, workflowId);
     if (workflowPath == null)
@@ -291,7 +313,7 @@ app.MapGet("/api/workflows/{workflowId}/explain", async (
     {
         logger.LogError(ex, "Explain endpoint failed for workflow {WorkflowId}", workflowId);
         return Results.Problem(
-            detail: ex.Message,
+            detail: "Bedrock request failed.",
             title: "Bedrock call failed",
             statusCode: StatusCodes.Status502BadGateway);
     }
@@ -336,9 +358,10 @@ static string? TryExtractPdfTemplateId(string componentConfigRelPath, string wor
 {
     try
     {
-        var workflowDir = Path.GetDirectoryName(Path.GetFullPath(workflowPath));
-        if (workflowDir == null) return null;
-        var configPath = Path.GetFullPath(Path.Combine(workflowDir, componentConfigRelPath));
+        var configPath = WorkflowLoader.ResolveComponentConfigPath(
+            componentConfigRelPath,
+            new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase),
+            workflowPath);
         if (!File.Exists(configPath)) return null;
 
         using var doc = JsonDocument.Parse(File.ReadAllText(configPath));
@@ -359,6 +382,41 @@ static string? TryExtractPdfTemplateId(string componentConfigRelPath, string wor
     {
         return null;
     }
+}
+
+static bool RequiresAdminAuth(IConfiguration config, string operationName)
+{
+    return config.GetValue<bool?>($"Api:RequireAdminFor:{operationName}") ?? true;
+}
+
+static bool IsAuthorized(HttpRequest request, IConfiguration config)
+{
+    var configuredToken = config["Api:AdminToken"];
+    if (string.IsNullOrWhiteSpace(configuredToken))
+        configuredToken = Environment.GetEnvironmentVariable("HACK13_API_ADMIN_TOKEN");
+
+    if (string.IsNullOrWhiteSpace(configuredToken))
+        return false;
+
+    if (request.Headers.TryGetValue("X-Api-Key", out var apiKeyHeader) &&
+        string.Equals(apiKeyHeader.ToString(), configuredToken, StringComparison.Ordinal))
+    {
+        return true;
+    }
+
+    if (request.Headers.TryGetValue("Authorization", out var authHeader))
+    {
+        var bearer = authHeader.ToString();
+        const string prefix = "Bearer ";
+        if (bearer.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+        {
+            var token = bearer[prefix.Length..].Trim();
+            if (string.Equals(token, configuredToken, StringComparison.Ordinal))
+                return true;
+        }
+    }
+
+    return false;
 }
 
 static async Task WriteSseEventAsync(HttpResponse response, string eventName, object payload, CancellationToken cancellationToken)

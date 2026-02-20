@@ -506,4 +506,26 @@ public class DecisionEngineComponentTests
         Assert.Equal("shortage_urgent", data["notice_type"]);
         Assert.Equal(result.OutputData["notice_type"], data["notice_type"]);
     }
+
+    [Fact]
+    public async Task MissingOperator_DefaultsToEquals()
+    {
+        var component = new DecisionEngineComponent();
+        var config = MakeConfig("""
+            {
+              "evaluation_mode": "first_match",
+              "rules": [{
+                "rule_name": "default_equals",
+                "condition": { "field": "status", "value": "ready" },
+                "outputs": { "matched": "true" }
+              }]
+            }
+            """);
+        var data = new Dictionary<string, string> { ["status"] = "ready" };
+
+        var result = await component.ExecuteAsync(config, data);
+
+        Assert.Equal(ComponentStatus.Success, result.Status);
+        Assert.Equal("true", data["matched"]);
+    }
 }

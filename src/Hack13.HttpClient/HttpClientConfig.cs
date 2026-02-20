@@ -4,6 +4,7 @@ internal sealed class HttpClientConfig
 {
     public string Method { get; set; } = "GET";
     public string Url { get; set; } = string.Empty;
+    public bool AllowPrivateNetwork { get; set; }
     public Dictionary<string, string>? Headers { get; set; }
     public string? Body { get; set; }
     public int TimeoutSeconds { get; set; } = 30;

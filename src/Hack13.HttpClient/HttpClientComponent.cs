@@ -49,6 +49,13 @@ public class HttpClientComponent : IComponent
                 return Failure("CONFIG_ERROR", $"Invalid HTTP method: '{httpConfig.Method}'.", sw);
 
             var resolvedUrl = PlaceholderResolver.Resolve(httpConfig.Url, dataDictionary);
+            var endpointValidation = await HttpEndpointGuard.ValidateOutboundHttpEndpointAsync(
+                resolvedUrl,
+                httpConfig.AllowPrivateNetwork,
+                cancellationToken);
+            if (!endpointValidation.IsAllowed)
+                return Failure("CONFIG_ERROR", endpointValidation.Error ?? "Endpoint validation failed.", sw);
+
             var resolvedBody = httpConfig.Body != null
                 ? PlaceholderResolver.Resolve(httpConfig.Body, dataDictionary)
                 : null;
@@ -130,24 +137,24 @@ public class HttpClientComponent : IComponent
             {
                 foreach (var (outputKey, jsonPath) in httpConfig.ResponseFieldMap)
                 {
-                    try
+                    if (!SimpleJsonPath.TryExtract(responseBody, jsonPath, out var value, out var parseError))
                     {
-                        var value = ExtractJsonValue(responseBody, jsonPath);
-                        if (value != null)
-                        {
-                            outputData[outputKey] = value;
-                            dataDictionary[outputKey] = value;
-                            logs.Add(MakeLog(LogLevel.Debug, $"Mapped '{jsonPath}' → '{outputKey}' = '{value}'."));
-                        }
-                        else
-                        {
-                            logs.Add(MakeLog(LogLevel.Warn, $"JSON path '{jsonPath}' not found in response."));
-                        }
+                        return FailureWithOutput(
+                            "RESPONSE_PARSE_ERROR",
+                            $"Failed to parse response for path '{jsonPath}': {parseError}",
+                            sw,
+                            outputData);
                     }
-                    catch (JsonException ex)
+
+                    if (value != null)
                     {
-                        return FailureWithOutput("RESPONSE_PARSE_ERROR",
-                            $"Failed to parse response for path '{jsonPath}': {ex.Message}", sw, outputData);
+                        outputData[outputKey] = value;
+                        dataDictionary[outputKey] = value;
+                        logs.Add(MakeLog(LogLevel.Debug, $"Mapped '{jsonPath}' → '{outputKey}' = '{value}'."));
+                    }
+                    else
+                    {
+                        logs.Add(MakeLog(LogLevel.Warn, $"JSON path '{jsonPath}' not found in response."));
                     }
                 }
             }
@@ -168,52 +175,6 @@ public class HttpClientComponent : IComponent
         {
             return Failure("UNEXPECTED_ERROR", ex.Message, sw);
         }
-    }
-
-    internal static string? ExtractJsonValue(string json, string path)
-    {
-        using var doc = JsonDocument.Parse(json);
-        var normalizedPath = path.StartsWith("$.") ? path[2..]
-            : path.TrimStart('$').TrimStart('.');
-
-        if (string.IsNullOrEmpty(normalizedPath))
-            return doc.RootElement.GetRawText();
-
-        var current = doc.RootElement;
-
-        foreach (var segment in normalizedPath.Split('.'))
-        {
-            var bracketPos = segment.IndexOf('[');
-            if (bracketPos >= 0)
-            {
-                var propName = segment[..bracketPos];
-                var endBracket = segment.IndexOf(']', bracketPos);
-                if (endBracket < 0)
-                    return null;
-                if (!int.TryParse(segment[(bracketPos + 1)..endBracket], out var idx))
-                    return null;
-
-                if (!string.IsNullOrEmpty(propName))
-                {
-                    if (!current.TryGetProperty(propName, out current))
-                        return null;
-                }
-
-                if (current.ValueKind != JsonValueKind.Array || idx >= current.GetArrayLength())
-                    return null;
-
-                current = current[idx];
-            }
-            else
-            {
-                if (!current.TryGetProperty(segment, out current))
-                    return null;
-            }
-        }
-
-        return current.ValueKind == JsonValueKind.String
-            ? current.GetString()
-            : current.GetRawText();
     }
 
     private static ComponentResult Success(Dictionary<string, string> outputData, List<LogEntry> logs, Stopwatch sw) =>

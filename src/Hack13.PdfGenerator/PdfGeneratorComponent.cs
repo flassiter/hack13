@@ -16,6 +16,18 @@ public class PdfGeneratorComponent : IComponent
         PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower
     };
 
+    private readonly Func<DateTimeOffset> _clock;
+
+    public PdfGeneratorComponent()
+        : this(() => DateTimeOffset.UtcNow)
+    {
+    }
+
+    internal PdfGeneratorComponent(Func<DateTimeOffset> clock)
+    {
+        _clock = clock ?? throw new ArgumentNullException(nameof(clock));
+    }
+
     public string ComponentType => "pdf_generator";
 
     public async Task<ComponentResult> ExecuteAsync(
@@ -49,7 +61,7 @@ public class PdfGeneratorComponent : IComponent
 
             // Auto-inject statement_date if not present
             if (!workingData.ContainsKey("statement_date"))
-                workingData["statement_date"] = DateTime.Today.ToString("yyyy-MM-dd");
+                workingData["statement_date"] = _clock().UtcDateTime.ToString("yyyy-MM-dd");
 
             // Load template registry
             TemplateRegistry registry;

@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using Hack13.ApprovalGate;
 using Hack13.Contracts.Enums;
 using Hack13.Contracts.Models;
@@ -25,8 +26,17 @@ public class ApprovalGateComponentTests : IDisposable
     {
         ComponentType = "approval_gate",
         ComponentVersion = "1.0",
-        Config = JsonDocument.Parse(json).RootElement
+        Config = JsonDocument.Parse(
+            WithPrivateNetworkEnabled((JsonObject)JsonNode.Parse(json)!)
+            .ToJsonString())
+            .RootElement
     };
+
+    private static JsonObject WithPrivateNetworkEnabled(JsonObject obj)
+    {
+        obj["allow_private_network"] = true;
+        return obj;
+    }
 
     private static IResponseBuilder JsonResponse(int status, string body) =>
         Response.Create()
@@ -352,5 +362,30 @@ public class ApprovalGateComponentTests : IDisposable
         Assert.Equal("REJECTED", result.Error!.ErrorCode);
         Assert.Equal("rejected", data["approval_status"]);
         Assert.Equal("2", data["approval_poll_count"]);
+    }
+
+    [Fact]
+    public async Task InvalidJsonPath_ReturnsParseErrorImmediately()
+    {
+        _server.Given(Request.Create().WithPath("/approvals/appr-bad-path").UsingGet())
+            .RespondWith(JsonResponse(200, "{\"items\": [\"approved\"]}"));
+
+        var component = new ApprovalGateComponent();
+        var config = MakeConfig($$"""
+            {
+              "poll_url": "{{BaseUrl}}/approvals/appr-bad-path",
+              "poll_interval_seconds": 0,
+              "timeout_seconds": 10,
+              "approved_path": "$.items[abc]",
+              "approved_value": "approved"
+            }
+            """);
+        var data = new Dictionary<string, string>();
+
+        var result = await component.ExecuteAsync(config, data);
+
+        Assert.Equal(ComponentStatus.Failure, result.Status);
+        Assert.Equal("RESPONSE_PARSE_ERROR", result.Error?.ErrorCode);
+        Assert.Equal("error", data["approval_status"]);
     }
 }

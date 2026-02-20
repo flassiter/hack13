@@ -132,13 +132,15 @@ public class DecisionEngineComponent : IComponent
             return !EvaluateCondition(condition.Not, data);
 
         // Simple condition — missing field is treated as empty string
-        var fieldValue = condition.Field != null && data.TryGetValue(condition.Field, out var v) ? v : "";
+        var key = string.IsNullOrWhiteSpace(condition.Field) ? condition.Key : condition.Field;
+        key ??= string.Empty;
+        var fieldValue = data.TryGetValue(key, out var v) ? v : "";
 
         // Range check (min/max without operator, or operator = "in_range")
-        if (condition.Min != null || condition.Max != null)
+        if (!string.IsNullOrWhiteSpace(condition.Min) || !string.IsNullOrWhiteSpace(condition.Max))
             return EvaluateRange(fieldValue, condition.Min, condition.Max);
 
-        var op = condition.Operator?.ToLowerInvariant() ?? string.Empty;
+        var op = (condition.Operator ?? "equals").Trim().ToLowerInvariant();
 
         return op switch
         {
