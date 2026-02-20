@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { WorkflowEditor } from './WorkflowEditor';
 
 const statusClass = {
   Pending: 'pending',
@@ -10,6 +11,7 @@ const statusClass = {
 
 export function App() {
   const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || '';
+  const [page, setPage] = useState('runner');
   const [loanNumber, setLoanNumber] = useState('1000001');
   const [customerEmail, setCustomerEmail] = useState('demo@example.com');
   const [workflows, setWorkflows] = useState([]);
@@ -200,7 +202,26 @@ export function App() {
     })))
     : liveSteps;
 
+  if (page === 'editor') {
+    return (
+      <>
+        <nav className="top-nav">
+          <button className="btn-nav" onClick={() => setPage('runner')}>
+            &larr; Workflow Runner
+          </button>
+        </nav>
+        <WorkflowEditor apiBaseUrl={apiBaseUrl} />
+      </>
+    );
+  }
+
   return (
+    <>
+    <nav className="top-nav">
+      <button className="btn-nav" onClick={() => setPage('editor')}>
+        Workflow Editor
+      </button>
+    </nav>
     <main className="page">
       <section className="panel">
         <h1>Component Workflow Demo</h1>
@@ -294,5 +315,6 @@ export function App() {
         ) : null}
       </section>
     </main>
+    </>
   );
 }

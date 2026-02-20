@@ -204,6 +204,47 @@ app.MapGet("/api/workflows/{workflowId}/execute-stream", async (
     }
 });
 
+app.MapGet("/api/workflows/{workflowId}/definition", (string workflowId, IConfiguration config) =>
+{
+    var workflowsDirectory = config["Workflow:Directory"] ?? "configs/workflows";
+    var workflowPath = WorkflowPathResolver.ResolveById(workflowsDirectory, workflowId);
+    if (workflowPath == null)
+        return Results.NotFound(new { message = $"Workflow '{workflowId}' not found." });
+
+    var json = File.ReadAllText(workflowPath);
+    return Results.Text(json, "application/json");
+});
+
+app.MapPut("/api/workflows/{workflowId}/definition", async (string workflowId, HttpRequest request, IConfiguration config) =>
+{
+    var workflowsDirectory = config["Workflow:Directory"] ?? "configs/workflows";
+    var workflowPath = WorkflowPathResolver.ResolveById(workflowsDirectory, workflowId);
+    if (workflowPath == null)
+        return Results.NotFound(new { message = $"Workflow '{workflowId}' not found." });
+
+    string body;
+    using (var reader = new StreamReader(request.Body))
+    {
+        body = await reader.ReadToEndAsync();
+    }
+
+    if (string.IsNullOrWhiteSpace(body))
+        return Results.BadRequest(new { message = "Request body must contain valid JSON." });
+
+    // Validate it's valid JSON
+    try
+    {
+        using var doc = JsonDocument.Parse(body);
+    }
+    catch (JsonException ex)
+    {
+        return Results.BadRequest(new { message = $"Invalid JSON: {ex.Message}" });
+    }
+
+    await File.WriteAllTextAsync(workflowPath, body);
+    return Results.Ok(new { message = "Workflow saved.", workflowId });
+});
+
 app.MapGet("/api/files/pdf", (string path) =>
 {
     if (string.IsNullOrWhiteSpace(path))
