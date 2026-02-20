@@ -73,6 +73,8 @@ Every component implements the same interface: it receives a config file and the
 
 Connects to a TN5250/AS400 "green screen" mainframe over TCP. Given a screen catalog definition, it can **Navigate** to a screen, **Assert** that the expected screen is displayed, and **Scrape** field values into the Data Dictionary. Supports EBCDIC encoding, telnet protocol negotiation, and maintains a full 24×80 character screen buffer. A companion **Mock Server** (`src/Hack13.TerminalServer/`) simulates the AS400 locally for development and testing using the same screen definitions and test loan data.
 
+![Mainframe loan details screen](screenshots/03-loan-details-1000001.png)
+
 ---
 
 ### `calculate` — Arithmetic Engine
@@ -160,6 +162,8 @@ Built with React 18 + Vite, the UI provides three views:
   - *Definition* — Raw JSON editor with format and save buttons
   - *Explain* — One-click AI-generated plain-English description of the workflow (powered by AWS Bedrock / Claude)
   - *Assistant* — Free-text prompt box: ask the AI to suggest specific changes and get back proposed JSON edits
+
+![Workflow visualizer diagram](screenshots/workflow-visualizer.png)
 
 ---
 
