@@ -11,6 +11,9 @@ export function WorkflowEditor({ apiBaseUrl }) {
   const [status, setStatus] = useState('');
   const [parseError, setParseError] = useState('');
   const [activeTab, setActiveTab] = useState('diagram');
+  const [explanation, setExplanation] = useState('');
+  const [explaining, setExplaining] = useState(false);
+  const [explainError, setExplainError] = useState('');
 
   useEffect(() => {
     (async () => {
@@ -38,6 +41,8 @@ export function WorkflowEditor({ apiBaseUrl }) {
     if (!id) return;
     setStatus('');
     setParseError('');
+    setExplanation('');
+    setExplainError('');
     try {
       const res = await fetch(`${apiBaseUrl}/api/workflows/${encodeURIComponent(id)}/definition`);
       if (!res.ok) throw new Error(`Failed to load definition (${res.status})`);
@@ -55,6 +60,33 @@ export function WorkflowEditor({ apiBaseUrl }) {
   useEffect(() => {
     if (selectedId) loadDefinition(selectedId);
   }, [selectedId, loadDefinition]);
+
+  const fetchExplanation = useCallback(async () => {
+    if (!selectedId) return;
+    setExplaining(true);
+    setExplainError('');
+    setExplanation('');
+    try {
+      const res = await fetch(`${apiBaseUrl}/api/workflows/${encodeURIComponent(selectedId)}/explain`);
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.detail || body.message || `Request failed (${res.status})`);
+      }
+      const data = await res.json();
+      setExplanation(data.explanation ?? '');
+    } catch (err) {
+      setExplainError(err.message);
+    } finally {
+      setExplaining(false);
+    }
+  }, [apiBaseUrl, selectedId]);
+
+  // Auto-fetch when switching to Explain tab if not yet loaded
+  useEffect(() => {
+    if (activeTab === 'explain' && !explanation && !explaining && !explainError && selectedId) {
+      fetchExplanation();
+    }
+  }, [activeTab, explanation, explaining, explainError, selectedId, fetchExplanation]);
 
   const handleJsonChange = (value) => {
     setJson(value);
@@ -130,6 +162,13 @@ export function WorkflowEditor({ apiBaseUrl }) {
             <div className="editor-tabs">
               <button
                 type="button"
+                className={`btn-tab${activeTab === 'explain' ? ' active' : ''}`}
+                onClick={() => setActiveTab('explain')}
+              >
+                Explain
+              </button>
+              <button
+                type="button"
                 className={`btn-tab${activeTab === 'diagram' ? ' active' : ''}`}
                 onClick={() => setActiveTab('diagram')}
               >
@@ -143,6 +182,16 @@ export function WorkflowEditor({ apiBaseUrl }) {
                 Definition
               </button>
             </div>
+            {activeTab === 'explain' && explanation && (
+              <button
+                type="button"
+                onClick={fetchExplanation}
+                disabled={explaining}
+                className="btn-secondary"
+              >
+                {explaining ? 'Generating...' : 'Regenerate'}
+              </button>
+            )}
             {activeTab === 'definition' && (
               <div className="editor-actions">
                 <button
@@ -176,9 +225,18 @@ export function WorkflowEditor({ apiBaseUrl }) {
           </div>
         )}
 
-        {activeTab === 'diagram' ? (
+        {activeTab === 'explain' && (
+          <ExplainPanel
+            explanation={explanation}
+            explaining={explaining}
+            explainError={explainError}
+            onRetry={fetchExplanation}
+          />
+        )}
+        {activeTab === 'diagram' && (
           <WorkflowDiagram json={parseError ? '' : json} />
-        ) : (
+        )}
+        {activeTab === 'definition' && (
           <textarea
             className="json-editor"
             value={json}
@@ -189,5 +247,40 @@ export function WorkflowEditor({ apiBaseUrl }) {
         )}
       </section>
     </main>
+  );
+}
+
+function ExplainPanel({ explanation, explaining, explainError, onRetry }) {
+  if (explaining) {
+    return (
+      <div className="explain-panel explain-loading">
+        <div className="explain-spinner" />
+        <p>Generating explanation via AI&hellip;</p>
+      </div>
+    );
+  }
+  if (explainError) {
+    return (
+      <div className="explain-panel">
+        <div className="alert">
+          <strong>Error:</strong> {explainError}
+        </div>
+        <button type="button" onClick={onRetry} className="btn-secondary" style={{ marginTop: '0.75rem' }}>
+          Try again
+        </button>
+      </div>
+    );
+  }
+  if (!explanation) {
+    return (
+      <div className="explain-panel explain-empty">
+        <p>No explanation yet.</p>
+      </div>
+    );
+  }
+  return (
+    <div className="explain-panel">
+      <pre className="explain-text">{explanation}</pre>
+    </div>
   );
 }

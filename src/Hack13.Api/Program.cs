@@ -1,6 +1,7 @@
 using Hack13.Orchestrator;
 using Hack13.EmailSender;
 using Hack13.Contracts.Models;
+using Hack13.Api.Services;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading.Channels;
@@ -12,6 +13,8 @@ builder.Services.AddCors(options =>
     options.AddPolicy("frontend", policy =>
         policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod());
 });
+
+builder.Services.AddSingleton<BedrockService>();
 
 var app = builder.Build();
 
@@ -203,7 +206,7 @@ app.MapGet("/api/workflows/{workflowId}/execute-stream", async (
             return;
         }
 
-        await WriteSseEventAsync(response, "summary", summary!, cancellationToken);
+        await WriteSseEventAsync(response, "summary", summary, cancellationToken);
     }
     catch (OperationCanceledException)
     {
@@ -238,7 +241,6 @@ app.MapPut("/api/workflows/{workflowId}/definition", async (string workflowId, H
     if (string.IsNullOrWhiteSpace(body))
         return Results.BadRequest(new { message = "Request body must contain valid JSON." });
 
-    // Validate it's valid JSON
     try
     {
         using var doc = JsonDocument.Parse(body);
@@ -266,6 +268,33 @@ app.MapGet("/api/files/pdf", (string path) =>
         return Results.NotFound(new { message = "File not found." });
 
     return Results.File(fullPath, "application/pdf", enableRangeProcessing: true);
+});
+
+app.MapGet("/api/workflows/{workflowId}/explain", async (
+    string workflowId,
+    BedrockService bedrockService,
+    ILogger<Program> logger,
+    IConfiguration config,
+    CancellationToken cancellationToken) =>
+{
+    var workflowsDirectory = config["Workflow:Directory"] ?? "configs/workflows";
+    var workflowPath = WorkflowPathResolver.ResolveById(workflowsDirectory, workflowId);
+    if (workflowPath == null)
+        return Results.NotFound(new { message = $"Workflow '{workflowId}' not found." });
+
+    try
+    {
+        var explanation = await bedrockService.ExplainWorkflowAsync(workflowPath, cancellationToken);
+        return Results.Ok(new { explanation });
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "Explain endpoint failed for workflow {WorkflowId}", workflowId);
+        return Results.Problem(
+            detail: ex.Message,
+            title: "Bedrock call failed",
+            statusCode: StatusCodes.Status502BadGateway);
+    }
 });
 
 app.MapGet("/health", () => Results.Ok(new { status = "ok", at = DateTimeOffset.UtcNow }));
