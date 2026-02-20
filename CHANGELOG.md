@@ -6,6 +6,12 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **`Hack13.Database.Common`** — shared library that houses `DbConnectionFactory` (SQL Server, PostgreSQL, MySQL, SQLite); referenced by both `DatabaseReader` and `DatabaseWriter` to eliminate duplication
+- **`Hack13.DatabaseWriter`** — `IComponent` that executes a parameterized SQL write command (INSERT/UPDATE/DELETE) or scalar query; supports `{{placeholder}}` resolution in connection string, query, and parameter values; writes rows-affected or scalar result to a configurable `output_key`; error codes: `CONFIG_ERROR`, `UNSUPPORTED_PROVIDER`, `CONNECTION_ERROR`, `QUERY_ERROR`
+- **`Hack13.HttpClient`** — `IComponent` that sends an HTTP request to a REST API; supports `{{placeholder}}` resolution in URL, headers, and body; configurable success status codes; maps dot-notation JSON paths from the response body into the data dictionary; always writes `http_status_code`; error codes: `CONFIG_ERROR`, `REQUEST_FAILED`, `HTTP_ERROR`, `RESPONSE_PARSE_ERROR`
+- **`Hack13.ApprovalGate`** — `IComponent` that polls a REST approval endpoint on a fixed interval until an approved or rejected signal is detected or a wall-clock timeout is reached; tolerates transient HTTP errors; always writes `approval_status` and `approval_poll_count`; error codes: `CONFIG_ERROR`, `REJECTED`, `TIMEOUT`
+- Three new components registered in `ComponentRegistry.CreateDefault()`: `database_writer`, `http_client`, `approval_gate`
+- Example component configs: `configs/components/db_write_bucket_assignment.json`, `http_post_letter_queue.json`, `approval_gate_letter.json`
 - Workflow orchestrator hardening for unexpected step exceptions (`STEP_EXCEPTION`) and cleaner failure handling
 - **`Hack13.DatabaseReader`** — `IComponent` that executes a parameterized SQL query and writes results into the data dictionary; supports single-row and multi-row (JSON array) output modes, configurable `output_prefix`, `require_row` guard, and `SqlServer`/`SQLite` providers
 - **`foreach` step type** — iterates over a JSON-serialized row list in the data dictionary and executes a sequence of `sub_steps` for each row; enables database-driven bulk processing workflows (e.g. `db_loan_lookup.json`)

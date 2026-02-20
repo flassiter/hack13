@@ -1,0 +1,13 @@
+{
+  "poll_url": "{{approval_api_url}}/approvals/{{approval_id}}",
+  "poll_method": "GET",
+  "poll_headers": {
+    "Authorization": "Bearer {{api_token}}"
+  },
+  "poll_interval_seconds": 30,
+  "timeout_seconds": 86400,
+  "approved_path": "status",
+  "approved_value": "approved",
+  "rejected_path": "status",
+  "rejected_value": "rejected"
+}

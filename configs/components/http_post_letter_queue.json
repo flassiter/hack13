@@ -1,0 +1,16 @@
+{
+  "method": "POST",
+  "url": "{{letter_queue_api_url}}/letters",
+  "headers": {
+    "Authorization": "Bearer {{api_token}}",
+    "Content-Type": "application/json"
+  },
+  "body": "{\"loanNumber\": \"{{loan_number}}\", \"template\": \"{{pdf_template}}\"}",
+  "timeout_seconds": 30,
+  "success_status_codes": [200, 201, 202],
+  "response_field_map": {
+    "approval_id": "$.id",
+    "queue_status": "$.status"
+  },
+  "response_body_key": "http_response_body"
+}

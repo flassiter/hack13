@@ -32,7 +32,11 @@ Connector
 | `Hack13.DecisionEngine` | Rule-based decision component |
 | `Hack13.EmailSender` | Email delivery component |
 | `Hack13.PdfGenerator` | PDF generation component |
+| `Hack13.Database.Common` | Shared database connection factory (SQL Server, PostgreSQL, MySQL, SQLite) |
 | `Hack13.DatabaseReader` | SQL database query component |
+| `Hack13.DatabaseWriter` | SQL database write component (INSERT/UPDATE/DELETE and scalar queries) |
+| `Hack13.HttpClient` | HTTP REST client component |
+| `Hack13.ApprovalGate` | Human-in-the-loop approval polling component |
 | `Hack13.Orchestrator` | Workflow execution engine |
 | `Hack13.Api` | HTTP API surface |
 | `Hack13.Cli` | Command-line runner |
@@ -354,6 +358,134 @@ database_reader
 `db_row_count` is always written into the data dictionary with the number of rows returned.
 
 If `require_row` is `true` and the query returns no rows, the component returns a `Failure` with code `NO_ROWS_RETURNED`.
+
+## DatabaseWriter
+
+Executes a parameterized SQL write command (INSERT, UPDATE, DELETE) or scalar query and writes the result into the data dictionary.
+
+### Component type
+
+```
+database_writer
+```
+
+### Configuration schema
+
+```json
+{
+  "provider": "sqlserver",
+  "connection_string": "{{db_connection_string}}",
+  "query": "UPDATE Loans SET bucket_id = @bucket_id WHERE loan_number = @loan_number",
+  "parameters": {
+    "bucket_id": "{{assigned_bucket_id}}",
+    "loan_number": "{{loan_number}}"
+  },
+  "command_timeout_seconds": 30,
+  "output_key": "rows_affected",
+  "scalar": false
+}
+```
+
+**`provider`** — same values as `DatabaseReader`: `sqlite`, `sqlserver`, `postgresql`, `mysql`.
+
+**`query`** and **`parameters`** values support `{{placeholder}}` substitution.
+
+**`scalar`** — if `true`, executes `ExecuteScalarAsync` and writes the single return value; if `false` (default), executes `ExecuteNonQueryAsync` and writes rows affected.
+
+**`output_key`** — data dictionary key to write the result into; default `"rows_affected"`. `db_rows_affected` (integer) is always also written.
+
+---
+
+## HttpClient
+
+Sends an HTTP request to an external REST API and maps response fields into the data dictionary.
+
+### Component type
+
+```
+http_client
+```
+
+### Configuration schema
+
+```json
+{
+  "method": "POST",
+  "url": "{{letter_queue_api_url}}/letters",
+  "headers": {
+    "Authorization": "Bearer {{api_token}}",
+    "Content-Type": "application/json"
+  },
+  "body": "{\"loanNumber\": \"{{loan_number}}\", \"template\": \"{{pdf_template}}\"}",
+  "timeout_seconds": 30,
+  "success_status_codes": [200, 201, 202],
+  "response_field_map": {
+    "approval_id": "$.id",
+    "queue_status": "$.status"
+  },
+  "response_body_key": "http_response_body"
+}
+```
+
+**`url`**, header values, and **`body`** support `{{placeholder}}` substitution.
+
+**`success_status_codes`** — list of acceptable HTTP status codes; if empty, treats 2xx as success.
+
+**`response_field_map`** — maps dot-notation JSON paths (e.g. `$.id`, `$.data.user.name`, `$.items[0]`) to data dictionary keys.
+
+**`response_body_key`** — key to write the full raw response body under; default `"http_response_body"`.
+
+`http_status_code` is always written to the data dictionary.
+
+---
+
+## ApprovalGate
+
+Polls a REST endpoint on a fixed interval until an approved or rejected response is detected, or a timeout is reached. Used after an `http_client` step that creates the approval request.
+
+### Component type
+
+```
+approval_gate
+```
+
+### Configuration schema
+
+```json
+{
+  "poll_url": "{{approval_api_url}}/approvals/{{approval_id}}",
+  "poll_method": "GET",
+  "poll_headers": {
+    "Authorization": "Bearer {{api_token}}"
+  },
+  "poll_interval_seconds": 30,
+  "timeout_seconds": 86400,
+  "approved_path": "status",
+  "approved_value": "approved",
+  "rejected_path": "status",
+  "rejected_value": "rejected"
+}
+```
+
+**`poll_url`** and header values support `{{placeholder}}` substitution — typically references an `approval_id` written by a prior `http_client` step.
+
+**`approved_path`** / **`rejected_path`** — dot-notation JSON paths in the response body.
+
+**`approved_value`** / **`rejected_value`** — compared case-insensitively.
+
+Transient HTTP errors (non-2xx) are tolerated and retried. `approval_status` (`"approved"`, `"rejected"`, or `"timeout"`) and `approval_poll_count` are always written to the data dictionary.
+
+### Typical workflow pattern
+
+```
+http_client  (POST → creates approval, maps $.id → approval_id)
+    ↓
+approval_gate  (polls GET /approvals/{{approval_id}})
+    ↓
+[downstream steps only run if approved]
+```
+
+---
 
 ## Shared Utilities
 

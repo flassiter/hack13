@@ -8,6 +8,9 @@
     <ProjectReference Include="..\Hack13.TerminalClient\Hack13.TerminalClient.csproj" />
     <ProjectReference Include="..\Hack13.PdfGenerator\Hack13.PdfGenerator.csproj" />
     <ProjectReference Include="..\Hack13.DatabaseReader\Hack13.DatabaseReader.csproj" />
+    <ProjectReference Include="..\Hack13.DatabaseWriter\Hack13.DatabaseWriter.csproj" />
+    <ProjectReference Include="..\Hack13.HttpClient\Hack13.HttpClient.csproj" />
+    <ProjectReference Include="..\Hack13.ApprovalGate\Hack13.ApprovalGate.csproj" />
   </ItemGroup>
 
   <ItemGroup>

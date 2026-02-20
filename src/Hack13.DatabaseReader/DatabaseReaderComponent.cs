@@ -4,6 +4,7 @@ using Hack13.Contracts.Enums;
 using Hack13.Contracts.Interfaces;
 using Hack13.Contracts.Models;
 using Hack13.Contracts.Utilities;
+using Hack13.Database.Common;
 
 namespace Hack13.DatabaseReader;
 

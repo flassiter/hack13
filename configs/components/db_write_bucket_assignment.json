@@ -1,0 +1,12 @@
+{
+  "provider": "sqlserver",
+  "connection_string": "{{db_connection_string}}",
+  "query": "UPDATE Loans SET bucket_id = @bucket_id WHERE loan_number = @loan_number",
+  "parameters": {
+    "bucket_id": "{{assigned_bucket_id}}",
+    "loan_number": "{{loan_number}}"
+  },
+  "command_timeout_seconds": 30,
+  "output_key": "rows_affected",
+  "scalar": false
+}
