@@ -1,4 +1,3 @@
-using System.Net.Sockets;
 using Hack13.Contracts.Protocol;
 
 namespace Hack13.TerminalClient.Protocol;
@@ -9,14 +8,14 @@ namespace Hack13.TerminalClient.Protocol;
 /// </summary>
 public class ClientTelnetNegotiator
 {
-    private readonly NetworkStream _stream;
+    private readonly Stream _stream;
     private readonly Action<string> _log;
     private readonly string _terminalType;
     private readonly string? _deviceName;
     private readonly List<byte> _pendingData = new();
 
     public ClientTelnetNegotiator(
-        NetworkStream stream,
+        Stream stream,
         Action<string> log,
         string terminalType = "IBM-3179-2",
         string? deviceName = null)

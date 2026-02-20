@@ -3,6 +3,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Hack13.Contracts\Hack13.Contracts.csproj" />
     <ProjectReference Include="..\Hack13.Orchestrator\Hack13.Orchestrator.csproj" />
+    <ProjectReference Include="..\Hack13.TerminalClient\Hack13.TerminalClient.csproj" />
   </ItemGroup>
 
   <PropertyGroup>

@@ -21,6 +21,15 @@ public class ConnectionConfig
     public string? DeviceName { get; set; }
     public int ConnectTimeoutSeconds { get; set; } = 5;
     public int ResponseTimeoutSeconds { get; set; } = 10;
+
+    /// <summary>Enable TLS (required for port 992 connections).</summary>
+    public bool UseTls { get; set; }
+
+    /// <summary>Path to a CA certificate PEM file to trust (e.g. an internal root CA).</summary>
+    public string? CaCertificatePath { get; set; }
+
+    /// <summary>Skip server certificate validation entirely (dev/testing only).</summary>
+    public bool InsecureSkipVerify { get; set; }
 }
 
 /// <summary>
