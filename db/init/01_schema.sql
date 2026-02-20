@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS loans (
     loan_status              CHAR(1)        NOT NULL,   -- A=active, R=recovery ready (mirrors loan_type)
     statute_of_limitations   INTEGER,                   -- days allowed for recovery; populated only when loan_type = 'R'
     assigned_to              VARCHAR(100),              -- recovery team member assigned to this loan; populated only when loan_type = 'R'
+    bucket_id                VARCHAR(50),               -- recovery bucket assignment; populated only when loan_type = 'R'
     original_loan_amount     NUMERIC(12,2)  NOT NULL,
     current_balance          NUMERIC(12,2)  NOT NULL,
     interest_rate            NUMERIC(5,3)   NOT NULL,
