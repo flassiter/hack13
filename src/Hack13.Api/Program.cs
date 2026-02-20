@@ -288,6 +288,37 @@ app.MapGet("/api/files/pdf", (string path) =>
     return Results.File(fullPath, "application/pdf", enableRangeProcessing: true);
 });
 
+app.MapPost("/api/workflows/{workflowId}/assist", async (
+    string workflowId,
+    AssistWorkflowRequest assistRequest,
+    BedrockService bedrockService,
+    ILogger<Program> logger,
+    IConfiguration config,
+    CancellationToken cancellationToken) =>
+{
+    if (string.IsNullOrWhiteSpace(assistRequest.Request))
+        return Results.BadRequest(new { message = "Request cannot be empty." });
+
+    var workflowsDirectory = config["Workflow:Directory"] ?? "configs/workflows";
+    var workflowPath = WorkflowPathResolver.ResolveById(workflowsDirectory, workflowId);
+    if (workflowPath == null)
+        return Results.NotFound(new { message = $"Workflow '{workflowId}' not found." });
+
+    try
+    {
+        var suggestion = await bedrockService.SuggestChangesAsync(workflowPath, assistRequest.Request, cancellationToken);
+        return Results.Ok(new { suggestion });
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "Assist endpoint failed for workflow {WorkflowId}", workflowId);
+        return Results.Problem(
+            detail: ex.Message,
+            title: "Bedrock call failed",
+            statusCode: StatusCodes.Status502BadGateway);
+    }
+});
+
 app.MapGet("/api/workflows/{workflowId}/explain", async (
     string workflowId,
     HttpRequest request,
@@ -442,6 +473,11 @@ static bool IsPathWithinDirectory(string candidatePath, string directoryPath)
 public sealed class ExecuteWorkflowRequest
 {
     public Dictionary<string, string>? Parameters { get; set; }
+}
+
+public sealed class AssistWorkflowRequest
+{
+    public string Request { get; set; } = string.Empty;
 }
 
 public sealed class WorkflowMetadata

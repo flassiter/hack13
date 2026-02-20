@@ -14,6 +14,10 @@ export function WorkflowEditor({ apiBaseUrl }) {
   const [explanation, setExplanation] = useState('');
   const [explaining, setExplaining] = useState(false);
   const [explainError, setExplainError] = useState('');
+  const [assistRequest, setAssistRequest] = useState('');
+  const [suggestion, setSuggestion] = useState('');
+  const [suggesting, setSuggesting] = useState(false);
+  const [suggestError, setSuggestError] = useState('');
 
   useEffect(() => {
     (async () => {
@@ -43,6 +47,8 @@ export function WorkflowEditor({ apiBaseUrl }) {
     setParseError('');
     setExplanation('');
     setExplainError('');
+    setSuggestion('');
+    setSuggestError('');
     try {
       const res = await fetch(`${apiBaseUrl}/api/workflows/${encodeURIComponent(id)}/definition`);
       if (!res.ok) throw new Error(`Failed to load definition (${res.status})`);
@@ -87,6 +93,33 @@ export function WorkflowEditor({ apiBaseUrl }) {
       fetchExplanation();
     }
   }, [activeTab, explanation, explaining, explainError, selectedId, fetchExplanation]);
+
+  const fetchSuggestion = useCallback(async () => {
+    if (!selectedId || !assistRequest.trim()) return;
+    setSuggesting(true);
+    setSuggestError('');
+    setSuggestion('');
+    try {
+      const res = await fetch(
+        `${apiBaseUrl}/api/workflows/${encodeURIComponent(selectedId)}/assist`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ request: assistRequest }),
+        }
+      );
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.detail || body.message || `Request failed (${res.status})`);
+      }
+      const data = await res.json();
+      setSuggestion(data.suggestion ?? '');
+    } catch (err) {
+      setSuggestError(err.message);
+    } finally {
+      setSuggesting(false);
+    }
+  }, [apiBaseUrl, selectedId, assistRequest]);
 
   const handleJsonChange = (value) => {
     setJson(value);
@@ -169,6 +202,13 @@ export function WorkflowEditor({ apiBaseUrl }) {
               </button>
               <button
                 type="button"
+                className={`btn-tab${activeTab === 'assistant' ? ' active' : ''}`}
+                onClick={() => setActiveTab('assistant')}
+              >
+                Assistant
+              </button>
+              <button
+                type="button"
                 className={`btn-tab${activeTab === 'diagram' ? ' active' : ''}`}
                 onClick={() => setActiveTab('diagram')}
               >
@@ -233,6 +273,16 @@ export function WorkflowEditor({ apiBaseUrl }) {
             onRetry={fetchExplanation}
           />
         )}
+        {activeTab === 'assistant' && (
+          <AssistantPanel
+            assistRequest={assistRequest}
+            onRequestChange={setAssistRequest}
+            suggestion={suggestion}
+            suggesting={suggesting}
+            suggestError={suggestError}
+            onGenerate={fetchSuggestion}
+          />
+        )}
         {activeTab === 'diagram' && (
           <WorkflowDiagram json={parseError ? '' : json} />
         )}
@@ -281,6 +331,51 @@ function ExplainPanel({ explanation, explaining, explainError, onRetry }) {
   return (
     <div className="explain-panel">
       <pre className="explain-text">{explanation}</pre>
+    </div>
+  );
+}
+
+function AssistantPanel({ assistRequest, onRequestChange, suggestion, suggesting, suggestError, onGenerate }) {
+  return (
+    <div className="assist-panel">
+      <div className="assist-input-area">
+        <textarea
+          className="assist-textarea"
+          value={assistRequest}
+          onChange={(e) => onRequestChange(e.target.value)}
+          placeholder="Describe the change you want to make to this workflow and its components. For example: &quot;Add a retry policy to the database step&quot; or &quot;Change the settlement discount to 25% for loans over 2 years old.&quot;"
+          spellCheck={false}
+          disabled={suggesting}
+        />
+        <div className="assist-actions">
+          <button
+            type="button"
+            onClick={onGenerate}
+            disabled={suggesting || !assistRequest.trim()}
+          >
+            {suggesting ? 'Generating...' : 'Generate Suggestion'}
+          </button>
+        </div>
+      </div>
+
+      {suggesting && (
+        <div className="explain-loading" style={{ minHeight: '120px' }}>
+          <div className="explain-spinner" />
+          <p>Generating suggestion via AI&hellip;</p>
+        </div>
+      )}
+
+      {suggestError && !suggesting && (
+        <div className="alert" style={{ marginTop: '0.75rem' }}>
+          <strong>Error:</strong> {suggestError}
+        </div>
+      )}
+
+      {suggestion && !suggesting && (
+        <div className="assist-result">
+          <pre className="suggest-text">{suggestion}</pre>
+        </div>
+      )}
     </div>
   );
 }

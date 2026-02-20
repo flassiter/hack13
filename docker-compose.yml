@@ -52,7 +52,7 @@ services:
       - Workflow__EnvironmentSettings__db_user=hack13
       - Workflow__EnvironmentSettings__db_password=hack13password
     volumes:
-      - ./configs:/app/configs:ro
+      - ./configs:/app/configs
       - ./output:/app/output
     depends_on:
       mock-server:
