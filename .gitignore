@@ -48,6 +48,7 @@ coverage/
 
 # PDF test outputs (don't commit generated files)
 test-data/output/
+output/
 
 # Project planning and archive
 plan/
