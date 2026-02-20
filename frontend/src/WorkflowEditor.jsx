@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
+import { WorkflowDiagram } from './WorkflowDiagram';
 
 export function WorkflowEditor({ apiBaseUrl }) {
   const [workflows, setWorkflows] = useState([]);
@@ -9,6 +10,7 @@ export function WorkflowEditor({ apiBaseUrl }) {
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState('');
   const [parseError, setParseError] = useState('');
+  const [activeTab, setActiveTab] = useState('diagram');
 
   useEffect(() => {
     (async () => {
@@ -124,22 +126,42 @@ export function WorkflowEditor({ apiBaseUrl }) {
       <section className="panel editor-panel">
         <div className="editor-toolbar">
           <h2>Definition</h2>
-          <div className="editor-actions">
-            <button
-              type="button"
-              onClick={handleFormat}
-              disabled={!!parseError || !json}
-              className="btn-secondary"
-            >
-              Format
-            </button>
-            <button
-              type="button"
-              onClick={handleSave}
-              disabled={saving || !!parseError || !isDirty || !json}
-            >
-              {saving ? 'Saving...' : 'Save'}
-            </button>
+          <div className="editor-toolbar-right">
+            <div className="editor-tabs">
+              <button
+                type="button"
+                className={`btn-tab${activeTab === 'diagram' ? ' active' : ''}`}
+                onClick={() => setActiveTab('diagram')}
+              >
+                Diagram
+              </button>
+              <button
+                type="button"
+                className={`btn-tab${activeTab === 'definition' ? ' active' : ''}`}
+                onClick={() => setActiveTab('definition')}
+              >
+                Definition
+              </button>
+            </div>
+            {activeTab === 'definition' && (
+              <div className="editor-actions">
+                <button
+                  type="button"
+                  onClick={handleFormat}
+                  disabled={!!parseError || !json}
+                  className="btn-secondary"
+                >
+                  Format
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSave}
+                  disabled={saving || !!parseError || !isDirty || !json}
+                >
+                  {saving ? 'Saving...' : 'Save'}
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
@@ -154,13 +176,17 @@ export function WorkflowEditor({ apiBaseUrl }) {
           </div>
         )}
 
-        <textarea
-          className="json-editor"
-          value={json}
-          onChange={(e) => handleJsonChange(e.target.value)}
-          spellCheck={false}
-          placeholder={loading ? 'Loading...' : 'Select a workflow to edit'}
-        />
+        {activeTab === 'diagram' ? (
+          <WorkflowDiagram json={parseError ? '' : json} />
+        ) : (
+          <textarea
+            className="json-editor"
+            value={json}
+            onChange={(e) => handleJsonChange(e.target.value)}
+            spellCheck={false}
+            placeholder={loading ? 'Loading...' : 'Select a workflow to edit'}
+          />
+        )}
       </section>
     </main>
   );
