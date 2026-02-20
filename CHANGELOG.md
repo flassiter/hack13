@@ -7,13 +7,24 @@ All notable changes to this project will be documented in this file.
 ### Added
 
 - Workflow orchestrator hardening for unexpected step exceptions (`STEP_EXCEPTION`) and cleaner failure handling
+- **`Hack13.DatabaseReader`** — `IComponent` that executes a parameterized SQL query and writes results into the data dictionary; supports single-row and multi-row (JSON array) output modes, configurable `output_prefix`, `require_row` guard, and `SqlServer`/`SQLite` providers
+- **`foreach` step type** — iterates over a JSON-serialized row list in the data dictionary and executes a sequence of `sub_steps` for each row; enables database-driven bulk processing workflows (e.g. `db_loan_lookup.json`)
 - API improvements:
+  - `GET /api/workflows` — lists all workflow files with rich metadata: description, version, component types, PDF templates, step names, last-modified timestamp, and parse-error details
   - `POST /api/workflows/{workflowId}/execute` now returns clean `400` messages for validation/runtime errors
+  - `GET /api/workflows/{workflowId}/execute-stream` — SSE streaming endpoint that emits `progress` events per step (state, attempt, message), a `summary` event on completion, and a `workflow_error` event on fatal failure
+  - `GET /api/workflows/{workflowId}/definition` — returns the raw workflow JSON
+  - `PUT /api/workflows/{workflowId}/definition` — validates and persists updated workflow JSON to disk
+  - `GET /api/files/pdf?path=...` — serves generated PDF files from the `output/` directory
   - `GET /health` endpoint for service checks
-- Frontend failure panel now surfaces failed step name and error details
-- Demo preparation assets:
-  - `docs/demo-script.md`
-  - `docs/step-functions-migration.md`
+- **Frontend — Workflow Runner** enhancements:
+  - Workflow dropdown now populated from `GET /api/workflows` with metadata display (description, version, components, PDF templates, last modified)
+  - Real-time step progress via SSE; parameter inputs dynamically generated from `initial_parameters`
+  - Parse-error detection for invalid workflow files surfaced inline
+  - Result panel shows PDF download link, email delivery status, and failed-step error details
+- **Frontend — Workflow Catalog** page:
+  - Two-pane read-only browser: left pane lists all workflows with name, description, and step count; right pane shows full metadata (version, last modified, initial parameters, step names, component types, PDF templates) plus a collapsible raw JSON view
+  - Parse errors in workflow files are surfaced inline so misconfigured definitions are visible without running them
 - Optional containerized demo stack:
   - `docker-compose.yml`
   - Dockerfiles for API, mock server, and frontend (`src/Hack13.Api/Dockerfile`, `src/Hack13.TerminalServer/Dockerfile`, `frontend/Dockerfile`)

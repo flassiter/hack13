@@ -32,6 +32,7 @@ Connector
 | `Hack13.DecisionEngine` | Rule-based decision component |
 | `Hack13.EmailSender` | Email delivery component |
 | `Hack13.PdfGenerator` | PDF generation component |
+| `Hack13.DatabaseReader` | SQL database query component |
 | `Hack13.Orchestrator` | Workflow execution engine |
 | `Hack13.Api` | HTTP API surface |
 | `Hack13.Cli` | Command-line runner |
@@ -79,6 +80,18 @@ dotnet run --project src/Hack13.Cli -- \
 dotnet run --project src/Hack13.Api
 ```
 
+#### Endpoints
+
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/api/workflows` | List all workflows with metadata (description, version, component types, PDF templates, last modified) |
+| `POST` | `/api/workflows/{workflowId}/execute` | Execute a workflow synchronously — returns the full `WorkflowExecutionSummary` |
+| `GET` | `/api/workflows/{workflowId}/execute-stream` | Execute a workflow with SSE streaming — emits `progress`, `summary`, and `workflow_error` events |
+| `GET` | `/api/workflows/{workflowId}/definition` | Return the raw workflow JSON |
+| `PUT` | `/api/workflows/{workflowId}/definition` | Overwrite the workflow JSON on disk |
+| `GET` | `/api/files/pdf?path=...` | Download a generated PDF from the `output/` directory |
+| `GET` | `/health` | Health check |
+
 `POST /api/workflows/{workflowId}/execute` accepts:
 
 ```json
@@ -89,7 +102,11 @@ dotnet run --project src/Hack13.Api
 }
 ```
 
-Health endpoint: `GET /health`
+`GET /api/workflows/{workflowId}/execute-stream` accepts workflow parameters as query-string key/value pairs and streams SSE events:
+
+- `progress` — emitted as each step starts, retries, or completes: `{ stepName, componentType, state, attempt, maxAttempts, message }`
+- `summary` — emitted at workflow completion: full `WorkflowExecutionSummary` JSON
+- `workflow_error` — emitted on a fatal error before any result: `{ message }`
 
 ### Frontend
 
@@ -100,6 +117,11 @@ npm run dev
 ```
 
 By default the frontend calls `/api/...`. Set `VITE_API_BASE_URL` for non-proxied environments.
+
+The frontend has two pages accessible via the top nav:
+
+- **Workflow Runner** — select a workflow from a dropdown (populated via `GET /api/workflows`), fill in its required parameters, and run it. Step progress is streamed in real time via SSE. On completion the result panel shows the final status, a PDF download link (if applicable), and email delivery status. Configuration errors in workflow files are surfaced inline.
+- **Workflow Catalog** — a read-only browser showing all available workflows in a two-pane layout. The left pane lists workflows with description and step count; the right pane shows full metadata for the selected workflow (version, parameters, step names, component types, PDF templates, and a collapsible raw JSON view).
 
 ## Docker Compose (Optional)
 
@@ -112,11 +134,6 @@ Services:
 - API on `http://localhost:5000`
 - smtp4dev UI on `http://localhost:3000`
 - Frontend on `http://localhost:8080`
-
-## Demo and Migration Notes
-
-- Demo runbook: `docs/demo-script.md`
-- Step Functions mapping notes: `docs/step-functions-migration.md`
 
 ## Running the Mock Server
 
@@ -235,6 +252,32 @@ Reads named field values from the screen buffer at positions defined in the scre
 
 All scraped field names are written into `OutputData` using the canonical names from the screen catalog.
 
+#### `ForEach`
+
+Iterates over a JSON-serialized list of rows stored in the data dictionary and executes a sequence of sub-steps for each row.
+
+```json
+{
+  "step_name": "process_each_loan",
+  "component_type": "foreach",
+  "foreach": {
+    "rows_key": "db_rows",
+    "row_prefix": "loan_"
+  },
+  "on_failure": "log_and_continue",
+  "sub_steps": [
+    {
+      "step_name": "lookup_escrow_data",
+      "component_type": "green_screen_connector",
+      "component_config": "../components/escrow_lookup.json",
+      "on_failure": "abort"
+    }
+  ]
+}
+```
+
+`rows_key` names the data dictionary key that holds the JSON array (e.g. produced by `DatabaseReader`). Each row's columns are merged into the dictionary with the optional `row_prefix` prepended. Sub-steps run sequentially for every row.
+
 ### Screen catalog
 
 Screen definitions live in `configs/screen-catalog/` as individual JSON files. Each file describes a screen's identifier (row/col/text used to detect it) and its fields (name, type, position, length).
@@ -270,6 +313,48 @@ Screen definitions live in `configs/screen-catalog/` as individual JSON files. E
 | `borrower_name`, `property_address`, `loan_type`, `original_amount`, `current_balance`, `interest_rate`, `monthly_payment`, `next_due_date`, `loan_status`, `origination_date` | Loan Details |
 | `escrow_balance`, `escrow_payment`, `required_reserve`, `shortage_amount`, `surplus_amount`, `escrow_status`, `tax_amount`, `hazard_insurance`, `flood_insurance`, `mortgage_insurance`, `last_analysis_date`, `next_analysis_date`, `projected_balance` | Escrow Analysis |
 
+## DatabaseReader
+
+Executes a parameterized SQL query and writes the results into the data dictionary.
+
+### Component type
+
+```
+database_reader
+```
+
+### Configuration schema
+
+```json
+{
+  "provider": "sqlite",
+  "connection_string": "{{db_connection_string}}",
+  "query": "SELECT loan_number, principal_balance FROM Loans WHERE loan_type = @loan_type",
+  "parameters": {
+    "loan_type": "{{filter_loan_type}}"
+  },
+  "command_timeout_seconds": 30,
+  "output_prefix": "",
+  "require_row": false,
+  "multi_row": false,
+  "rows_output_key": "db_rows"
+}
+```
+
+**`provider`** — database driver to use. Supported values: `sqlite`, `sqlserver` (SQL Server / Azure SQL).
+
+**`connection_string`** supports `{{placeholder}}` substitution.
+
+**`parameters`** — named query parameters; values support `{{placeholder}}` substitution. Parameter names are passed to the driver with a leading `@` if not already present.
+
+**Single-row mode** (default, `multi_row: false`): reads the first row and writes each column as `{output_prefix}{column_name}` into the data dictionary.
+
+**Multi-row mode** (`multi_row: true`): serializes all rows to a JSON array and writes it under `rows_output_key`. Intended for use with a `foreach` step downstream.
+
+`db_row_count` is always written into the data dictionary with the number of rows returned.
+
+If `require_row` is `true` and the query returns no rows, the component returns a `Failure` with code `NO_ROWS_RETURNED`.
+
 ## Shared Utilities
 
 **`PlaceholderResolver`** — resolves `{{key}}` tokens in any string against a `Dictionary<string, string>`. Unresolved placeholders are left as-is.
@@ -299,6 +384,7 @@ hack13.sln
 │   │   ├── Engine/              # Screen rendering and field extraction
 │   │   ├── Navigation/          # Session state and transition rules
 │   │   └── Server/              # TCP server and client session handling
+│   ├── Hack13.DatabaseReader/   # SQL database query component
 │   └── ...                      # Additional component projects
 └── tests/
     ├── Hack13.Contracts.Tests/
