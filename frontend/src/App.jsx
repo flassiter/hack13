@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { WorkflowEditor } from './WorkflowEditor';
+import { WorkflowCatalog } from './WorkflowCatalog';
 
 const statusClass = {
   Pending: 'pending',
@@ -14,6 +14,7 @@ const formatLabel = (str) =>
 
 export function App() {
   const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || '';
+  const [page, setPage] = useState('runner');
   const [paramValues, setParamValues] = useState({});
   const [workflows, setWorkflows] = useState([]);
   const [selectedWorkflowId, setSelectedWorkflowId] = useState('escrow_statement_generation');
@@ -210,7 +211,7 @@ export function App() {
     ? result.steps.map((s) => ({ stepName: s.stepName, status: s.status, message: s.error?.errorMessage || '' }))
     : liveSteps;
 
-  if (page === 'editor') {
+  if (page === 'catalog') {
     return (
       <>
         <nav className="top-nav">
@@ -218,7 +219,13 @@ export function App() {
             &larr; Workflow Runner
           </button>
         </nav>
-        <WorkflowEditor apiBaseUrl={apiBaseUrl} />
+        <WorkflowCatalog
+          workflows={workflows}
+          workflowsLoading={workflowsLoading}
+          selectedWorkflowId={selectedWorkflowId}
+          onSelectWorkflow={setSelectedWorkflowId}
+          formatLabel={formatLabel}
+        />
       </>
     );
   }
@@ -226,8 +233,8 @@ export function App() {
   return (
     <>
     <nav className="top-nav">
-      <button className="btn-nav" onClick={() => setPage('editor')}>
-        Workflow Editor
+      <button className="btn-nav" onClick={() => setPage('catalog')}>
+        Workflow Catalog
       </button>
     </nav>
     <main className="page">
