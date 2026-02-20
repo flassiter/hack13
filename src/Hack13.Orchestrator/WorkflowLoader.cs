@@ -51,10 +51,13 @@ public sealed class WorkflowLoader
                         throw new InvalidOperationException(
                             $"Sub-step '{subStep.StepName}' in foreach step '{step.StepName}' references unregistered component type '{subStep.ComponentType}'.");
 
-                    var subPath = ResolveComponentConfigPath(subStep.ComponentConfig, dataDictionary, workflowPath);
-                    if (!File.Exists(subPath))
-                        throw new FileNotFoundException(
-                            $"Sub-step '{subStep.StepName}' component config file not found: {subPath}");
+                    if (!HasUnresolvedPlaceholders(subStep.ComponentConfig, dataDictionary))
+                    {
+                        var subPath = ResolveComponentConfigPath(subStep.ComponentConfig, dataDictionary, workflowPath);
+                        if (!File.Exists(subPath))
+                            throw new FileNotFoundException(
+                                $"Sub-step '{subStep.StepName}' component config file not found: {subPath}");
+                    }
                 }
                 continue;
             }
@@ -63,11 +66,14 @@ public sealed class WorkflowLoader
                 throw new InvalidOperationException(
                     $"Step '{step.StepName}' references unregistered component type '{step.ComponentType}'.");
 
-            var resolvedPath = ResolveComponentConfigPath(step.ComponentConfig, dataDictionary, workflowPath);
-            if (!File.Exists(resolvedPath))
+            if (!HasUnresolvedPlaceholders(step.ComponentConfig, dataDictionary))
             {
-                throw new FileNotFoundException(
-                    $"Step '{step.StepName}' component config file not found: {resolvedPath}");
+                var resolvedPath = ResolveComponentConfigPath(step.ComponentConfig, dataDictionary, workflowPath);
+                if (!File.Exists(resolvedPath))
+                {
+                    throw new FileNotFoundException(
+                        $"Step '{step.StepName}' component config file not found: {resolvedPath}");
+                }
             }
         }
     }
@@ -130,5 +136,21 @@ public sealed class WorkflowLoader
                     throw new InvalidOperationException($"Step '{step.StepName}' must define component_config.");
             }
         }
+    }
+
+    private static bool HasUnresolvedPlaceholders(
+        string configuredPath,
+        IReadOnlyDictionary<string, string> dataDictionary)
+    {
+        if (string.IsNullOrWhiteSpace(configuredPath))
+            return false;
+
+        foreach (var key in PlaceholderResolver.GetPlaceholderKeys(configuredPath))
+        {
+            if (!dataDictionary.TryGetValue(key, out var value) || string.IsNullOrWhiteSpace(value))
+                return true;
+        }
+
+        return false;
     }
 }

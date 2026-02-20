@@ -157,7 +157,10 @@ public sealed class EmailSenderComponent : IComponent
         if (!string.IsNullOrWhiteSpace(emailConfig.BodyTemplate))
         {
             var resolvedTemplateName = PlaceholderResolver.Resolve(emailConfig.BodyTemplate, dataDictionary);
-            var fullPath = Path.Combine(_environmentConfig.TemplateBasePath, resolvedTemplateName);
+            var basePath = Path.GetFullPath(_environmentConfig.TemplateBasePath);
+            var fullPath = Path.GetFullPath(Path.Combine(basePath, resolvedTemplateName));
+            if (!IsPathWithinDirectory(fullPath, basePath))
+                throw new InvalidOperationException($"Email body template path escapes base directory: {resolvedTemplateName}");
             if (!File.Exists(fullPath))
                 throw new FileNotFoundException($"Email body template not found: {fullPath}");
 
@@ -298,6 +301,18 @@ public sealed class EmailSenderComponent : IComponent
         {
             return false;
         }
+    }
+
+    private static bool IsPathWithinDirectory(string candidatePath, string directoryPath)
+    {
+        var fullDirectoryPath = Path.GetFullPath(directoryPath).TrimEnd(Path.DirectorySeparatorChar) +
+                                Path.DirectorySeparatorChar;
+        var fullCandidatePath = Path.GetFullPath(candidatePath);
+        var comparison = OperatingSystem.IsWindows()
+            ? StringComparison.OrdinalIgnoreCase
+            : StringComparison.Ordinal;
+
+        return fullCandidatePath.StartsWith(fullDirectoryPath, comparison);
     }
 
     private static ComponentResult Success(

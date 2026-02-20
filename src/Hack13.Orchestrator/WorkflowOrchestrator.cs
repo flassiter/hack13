@@ -117,6 +117,7 @@ public sealed class WorkflowOrchestrator
     {
         var retryPolicy = GetRetrySettings(step);
         ComponentResult? lastResult = null;
+        var lastElapsedMs = 0L;
 
         for (var attempt = 1; attempt <= retryPolicy.MaxAttempts; attempt++)
         {
@@ -151,6 +152,7 @@ public sealed class WorkflowOrchestrator
             finally
             {
                 stepTimer.Stop();
+                lastElapsedMs = stepTimer.ElapsedMilliseconds;
             }
 
             if (result.Status == ComponentStatus.Success)
@@ -164,7 +166,7 @@ public sealed class WorkflowOrchestrator
                     StepName = step.StepName,
                     ComponentType = step.ComponentType,
                     Status = ComponentStatus.Success,
-                    DurationMs = stepTimer.ElapsedMilliseconds + result.DurationMs
+                    DurationMs = lastElapsedMs
                 };
             }
 
@@ -196,7 +198,7 @@ public sealed class WorkflowOrchestrator
             StepName = step.StepName,
             ComponentType = step.ComponentType,
             Status = ComponentStatus.Failure,
-            DurationMs = lastResult?.DurationMs ?? 0,
+            DurationMs = lastElapsedMs,
             Error = error
         };
     }

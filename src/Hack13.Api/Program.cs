@@ -259,7 +259,7 @@ app.MapGet("/api/files/pdf", (string path) =>
 
     var fullPath = Path.GetFullPath(path);
     var outputRoot = Path.GetFullPath("output");
-    if (!fullPath.StartsWith(outputRoot, StringComparison.Ordinal))
+    if (!IsPathWithinDirectory(fullPath, outputRoot))
         return Results.BadRequest(new { message = "Only files under output/ are downloadable." });
 
     if (!File.Exists(fullPath))
@@ -338,6 +338,18 @@ static async Task WriteSseEventAsync(HttpResponse response, string eventName, ob
     await response.WriteAsync($"event: {eventName}\n", cancellationToken);
     await response.WriteAsync($"data: {json}\n\n", cancellationToken);
     await response.Body.FlushAsync(cancellationToken);
+}
+
+static bool IsPathWithinDirectory(string candidatePath, string directoryPath)
+{
+    var fullDirectoryPath = Path.GetFullPath(directoryPath).TrimEnd(Path.DirectorySeparatorChar) +
+                            Path.DirectorySeparatorChar;
+    var fullCandidatePath = Path.GetFullPath(candidatePath);
+    var comparison = OperatingSystem.IsWindows()
+        ? StringComparison.OrdinalIgnoreCase
+        : StringComparison.Ordinal;
+
+    return fullCandidatePath.StartsWith(fullDirectoryPath, comparison);
 }
 
 public sealed class ExecuteWorkflowRequest

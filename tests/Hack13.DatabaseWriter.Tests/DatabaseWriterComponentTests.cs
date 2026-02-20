@@ -130,7 +130,7 @@ public class DatabaseWriterComponentTests : IDisposable
 
         Assert.Equal(ComponentStatus.Success, result.Status);
         Assert.Equal("2", data["item_count"]);
-        Assert.Equal("1", data["db_rows_affected"]);
+        Assert.Equal("0", data["db_rows_affected"]);
     }
 
     // -------------------------------------------------------------------------

@@ -511,3 +511,107 @@ Step 5 (Email Sender)     reads pdf_file_path, customer_email, loan_number,
 ```
 
 No step has hardcoded knowledge of any other step. The connections between them are implicit through shared data dictionary keys and `{{placeholder}}` resolution in the configuration files.
+
+---
+
+## Component Config Reference (Additional)
+
+These components are available but not used in the escrow example. All `{{placeholder}}` values are resolved from the data dictionary at runtime.
+
+### HTTP Client
+
+**Component type:** `http_client`
+
+```json
+{
+  "component_type": "http_client",
+  "component_version": "1.0",
+  "config": {
+    "url": "https://example.com/api/{{loan_number}}",
+    "method": "GET",
+    "headers": {
+      "Authorization": "Bearer {{api_token}}"
+    },
+    "timeout_seconds": 15,
+    "success_status_codes": [200, 204],
+    "response_body_key": "http_response_body",
+    "response_field_map": {
+      "customer_name": "$.customer.name",
+      "account_balance": "$.account.balance"
+    }
+  }
+}
+```
+
+Required fields: `url`  
+Common outputs: `http_status_code`, optional mapped fields.
+
+### Database Reader
+
+**Component type:** `database_reader`
+
+```json
+{
+  "component_type": "database_reader",
+  "component_version": "1.0",
+  "config": {
+    "provider": "sqlite",
+    "connection_string": "Data Source=./db/app.db",
+    "query": "SELECT * FROM loans WHERE loan_number = @loan_number",
+    "parameters": { "loan_number": "{{loan_number}}" },
+    "output_prefix": "db_",
+    "multi_row": false,
+    "require_row": true
+  }
+}
+```
+
+Required fields: `provider`, `connection_string`, `query`  
+Outputs: column values (prefixed), `db_row_count`. In `multi_row=true`, rows are serialized to `rows_output_key` (default `db_rows`).
+
+### Database Writer
+
+**Component type:** `database_writer`
+
+```json
+{
+  "component_type": "database_writer",
+  "component_version": "1.0",
+  "config": {
+    "provider": "postgresql",
+    "connection_string": "Host=localhost;Database=app;Username=app;Password=secret",
+    "query": "UPDATE loans SET status = @status WHERE loan_number = @loan_number",
+    "parameters": { "status": "closed", "loan_number": "{{loan_number}}" },
+    "output_key": "db_rows_updated",
+    "scalar": false
+  }
+}
+```
+
+Required fields: `provider`, `connection_string`, `query`, `output_key`  
+Outputs: `output_key`, `db_rows_affected`.
+
+### Approval Gate
+
+**Component type:** `approval_gate`
+
+```json
+{
+  "component_type": "approval_gate",
+  "component_version": "1.0",
+  "config": {
+    "poll_url": "https://example.com/approvals/{{approval_id}}",
+    "poll_method": "GET",
+    "poll_headers": { "Authorization": "Bearer {{api_token}}" },
+    "approved_path": "$.status",
+    "approved_value": "approved",
+    "rejected_path": "$.status",
+    "rejected_value": "rejected",
+    "poll_interval_seconds": 5,
+    "timeout_seconds": 300
+  }
+}
+```
+
+Required fields: `poll_url`, `approved_path`, `approved_value`  
+Outputs: `approval_status` (`approved`, `rejected`, `timeout`), `approval_poll_count`.

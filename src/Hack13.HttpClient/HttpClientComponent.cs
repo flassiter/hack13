@@ -11,6 +11,11 @@ namespace Hack13.HttpClient;
 
 public class HttpClientComponent : IComponent
 {
+    private static readonly System.Net.Http.HttpClient SharedClient = new()
+    {
+        Timeout = Timeout.InfiniteTimeSpan
+    };
+
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNameCaseInsensitive = true,
@@ -57,9 +62,6 @@ public class HttpClientComponent : IComponent
 
             logs.Add(MakeLog(LogLevel.Info, $"Sending {method} request to '{resolvedUrl}'."));
 
-            using var client = new System.Net.Http.HttpClient();
-            client.Timeout = Timeout.InfiniteTimeSpan;
-
             using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(httpConfig.TimeoutSeconds));
             using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutCts.Token);
 
@@ -81,12 +83,19 @@ public class HttpClientComponent : IComponent
 
             HttpResponseMessage response;
             string responseBody;
+            int statusCode;
+            bool isSuccessStatusCode;
 
             try
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                response = await client.SendAsync(request, linkedCts.Token);
-                responseBody = await response.Content.ReadAsStringAsync(linkedCts.Token);
+                response = await SharedClient.SendAsync(request, linkedCts.Token);
+                using (response)
+                {
+                    statusCode = (int)response.StatusCode;
+                    isSuccessStatusCode = response.IsSuccessStatusCode;
+                    responseBody = await response.Content.ReadAsStringAsync(linkedCts.Token);
+                }
             }
             catch (OperationCanceledException) when (timeoutCts.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
             {
@@ -101,13 +110,12 @@ public class HttpClientComponent : IComponent
                 return Failure("REQUEST_FAILED", $"HTTP request failed: {ex.Message}", sw);
             }
 
-            var statusCode = (int)response.StatusCode;
             outputData["http_status_code"] = statusCode.ToString();
             dataDictionary["http_status_code"] = statusCode.ToString();
 
             var isSuccess = httpConfig.SuccessStatusCodes?.Count > 0
                 ? httpConfig.SuccessStatusCodes.Contains(statusCode)
-                : response.IsSuccessStatusCode;
+                : isSuccessStatusCode;
 
             if (!isSuccess)
                 return FailureWithOutput("HTTP_ERROR", $"Unexpected HTTP status code: {statusCode}.", sw, outputData);
@@ -180,7 +188,10 @@ public class HttpClientComponent : IComponent
             {
                 var propName = segment[..bracketPos];
                 var endBracket = segment.IndexOf(']', bracketPos);
-                var idx = int.Parse(segment[(bracketPos + 1)..endBracket]);
+                if (endBracket < 0)
+                    return null;
+                if (!int.TryParse(segment[(bracketPos + 1)..endBracket], out var idx))
+                    return null;
 
                 if (!string.IsNullOrEmpty(propName))
                 {

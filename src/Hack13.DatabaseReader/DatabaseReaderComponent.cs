@@ -39,6 +39,7 @@ public class DatabaseReaderComponent : IComponent
                 return Failure("CONFIG_ERROR", "Required field 'connection_string' is missing.", null, sw);
 
             var resolvedConnectionString = PlaceholderResolver.Resolve(dbConfig.ConnectionString, dataDictionary);
+            var resolvedQuery = PlaceholderResolver.Resolve(dbConfig.Query, dataDictionary);
 
             var resolvedParams = new Dictionary<string, string>();
             if (dbConfig.Parameters != null)
@@ -79,7 +80,7 @@ public class DatabaseReaderComponent : IComponent
                 logs.Add(MakeLog(LogLevel.Debug, "Connection opened. Preparing query."));
 
                 using var command = connection.CreateCommand();
-                command.CommandText = dbConfig.Query;
+                command.CommandText = resolvedQuery;
                 command.CommandTimeout = dbConfig.CommandTimeoutSeconds;
 
                 foreach (var (key, value) in resolvedParams)

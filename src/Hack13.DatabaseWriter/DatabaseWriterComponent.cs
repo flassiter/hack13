@@ -103,8 +103,8 @@ public class DatabaseWriterComponent : IComponent
 
                         outputData[dbConfig.OutputKey] = scalarValue;
                         dataDictionary[dbConfig.OutputKey] = scalarValue;
-                        outputData["db_rows_affected"] = "1";
-                        dataDictionary["db_rows_affected"] = "1";
+                        outputData["db_rows_affected"] = "0";
+                        dataDictionary["db_rows_affected"] = "0";
 
                         logs.Add(MakeLog(LogLevel.Info, $"Scalar result written to '{dbConfig.OutputKey}': '{scalarValue}'."));
                     }

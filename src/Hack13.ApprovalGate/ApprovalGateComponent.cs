@@ -10,6 +10,11 @@ namespace Hack13.ApprovalGate;
 
 public class ApprovalGateComponent : IComponent
 {
+    private static readonly System.Net.Http.HttpClient SharedClient = new()
+    {
+        Timeout = Timeout.InfiniteTimeSpan
+    };
+
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNameCaseInsensitive = true,
@@ -58,9 +63,6 @@ public class ApprovalGateComponent : IComponent
                 $"Starting approval polling: {agConfig.PollMethod} {resolvedUrl} " +
                 $"(interval={agConfig.PollIntervalSeconds}s, timeout={agConfig.TimeoutSeconds}s)"));
 
-            using var client = new System.Net.Http.HttpClient();
-            client.Timeout = Timeout.InfiniteTimeSpan;
-
             while (true)
             {
                 cancellationToken.ThrowIfCancellationRequested();
@@ -91,17 +93,13 @@ public class ApprovalGateComponent : IComponent
                     using var linked = CancellationTokenSource.CreateLinkedTokenSource(
                         cancellationToken, pollCts.Token);
 
-                    var response = await client.SendAsync(request, linked.Token);
+                    using var response = await SharedClient.SendAsync(request, linked.Token);
 
                     if (response.IsSuccessStatusCode)
-                    {
                         responseBody = await response.Content.ReadAsStringAsync(linked.Token);
-                    }
                     else
-                    {
                         logs.Add(MakeLog(LogLevel.Warn,
                             $"Poll {pollCount}: HTTP {(int)response.StatusCode} — transient error, retrying."));
-                    }
                 }
                 catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
                 {
