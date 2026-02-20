@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { WorkflowCatalog } from './WorkflowCatalog';
+import { WorkflowEditor } from './WorkflowEditor';
 
 const statusClass = {
   Pending: 'pending',
@@ -230,11 +231,27 @@ export function App() {
     );
   }
 
+  if (page === 'editor') {
+    return (
+      <>
+        <nav className="top-nav">
+          <button className="btn-nav" onClick={() => setPage('runner')}>
+            &larr; Workflow Runner
+          </button>
+        </nav>
+        <WorkflowEditor apiBaseUrl={apiBaseUrl} />
+      </>
+    );
+  }
+
   return (
     <>
     <nav className="top-nav">
       <button className="btn-nav" onClick={() => setPage('catalog')}>
         Workflow Catalog
+      </button>
+      <button className="btn-nav" onClick={() => setPage('editor')}>
+        Workflow Editor
       </button>
     </nav>
     <main className="page">
