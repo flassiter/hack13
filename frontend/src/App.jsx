@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { WorkflowEditor } from './WorkflowEditor';
 
 const statusClass = {
   Pending: 'pending',
@@ -209,7 +210,26 @@ export function App() {
     ? result.steps.map((s) => ({ stepName: s.stepName, status: s.status, message: s.error?.errorMessage || '' }))
     : liveSteps;
 
+  if (page === 'editor') {
+    return (
+      <>
+        <nav className="top-nav">
+          <button className="btn-nav" onClick={() => setPage('runner')}>
+            &larr; Workflow Runner
+          </button>
+        </nav>
+        <WorkflowEditor apiBaseUrl={apiBaseUrl} />
+      </>
+    );
+  }
+
   return (
+    <>
+    <nav className="top-nav">
+      <button className="btn-nav" onClick={() => setPage('editor')}>
+        Workflow Editor
+      </button>
+    </nav>
     <main className="page">
       <section className="panel">
         <h1>Hack13 Demo</h1>
@@ -326,5 +346,6 @@ export function App() {
         )}
       </section>
     </main>
+    </>
   );
 }

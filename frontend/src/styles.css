@@ -116,3 +116,254 @@ button:disabled {
   .page { padding: 1rem 0.7rem 2rem; }
   .panel { border-radius: 12px; }
 }
+
+/* Navigation */
+.top-nav {
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 1rem 1rem 0;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.btn-nav {
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: #fff;
+  padding: 0.5rem 1rem;
+  border-radius: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 0.9rem;
+  backdrop-filter: blur(6px);
+  transition: background 0.2s;
+}
+
+.btn-nav:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+/* Workflow Editor */
+.editor-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+.editor-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.editor-toolbar h2 {
+  margin: 0;
+}
+
+.editor-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.btn-secondary {
+  background: linear-gradient(135deg, #5c6773, #3d4a56);
+}
+
+.json-editor {
+  width: 100%;
+  min-height: 500px;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.85rem;
+  line-height: 1.45;
+  border: 1px solid #bfd1e5;
+  border-radius: 10px;
+  padding: 0.8rem;
+  background: #fafcff;
+  color: #1a2a3a;
+  resize: vertical;
+  tab-size: 2;
+}
+
+.json-editor:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+}
+
+.status-ok {
+  color: #0a7d28;
+  font-weight: 600;
+  padding: 0.4rem 0;
+}
+
+/* ── Editor Tabs ─────────────────────────────────────────────────── */
+.editor-toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.editor-tabs {
+  display: flex;
+  gap: 3px;
+  background: #edf3fa;
+  border-radius: 8px;
+  padding: 3px;
+}
+
+.btn-tab {
+  background: transparent;
+  border: none;
+  color: #5c6773;
+  padding: 0.28rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.btn-tab.active {
+  background: white;
+  color: var(--accent);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+
+/* ── Workflow Diagram Container ──────────────────────────────────── */
+.wf-diagram-container {
+  height: 560px;
+  border: 1px solid #bfd1e5;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #f4f8fd;
+}
+
+.wf-diagram-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #8a9bb0;
+  font-size: 0.9rem;
+}
+
+/* Suppress grab cursor since diagram is read-only */
+.react-flow__node {
+  cursor: default !important;
+}
+
+.react-flow__handle {
+  width: 8px;
+  height: 8px;
+  background: #8aabb8;
+  border: 2px solid white;
+}
+
+/* ── Workflow Step Nodes ─────────────────────────────────────────── */
+.wf-node {
+  width: 100%;
+  min-height: 70px;
+  padding: 8px 12px;
+  border: 2px solid;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-family: 'Space Grotesk', sans-serif;
+  box-sizing: border-box;
+}
+
+.wf-node-type {
+  font-size: 0.67rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.wf-node-name {
+  font-weight: 600;
+  font-size: 0.84rem;
+  color: #12263a;
+  word-break: break-word;
+}
+
+.wf-node-meta {
+  font-size: 0.69rem;
+  color: #5c6773;
+}
+
+/* ── Foreach Container Node ──────────────────────────────────────── */
+.wf-foreach {
+  width: 100%;
+  height: 100%;
+  border: 2px dashed #0277bd;
+  border-radius: 10px;
+  background: rgba(225, 245, 254, 0.55);
+  box-sizing: border-box;
+}
+
+.wf-foreach-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-bottom: 1px dashed #90caf9;
+}
+
+.wf-foreach-icon {
+  font-size: 1.1rem;
+  color: #0277bd;
+  line-height: 1;
+}
+
+.wf-foreach-badge {
+  font-size: 0.67rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #0277bd;
+}
+
+.wf-foreach-name {
+  font-weight: 600;
+  font-size: 0.84rem;
+  color: #12263a;
+}
+
+.wf-foreach-meta {
+  padding: 4px 12px;
+  font-size: 0.69rem;
+  color: #0277bd;
+}
+
+.wf-foreach-meta code {
+  background: rgba(2, 119, 189, 0.12);
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-size: 0.67rem;
+}
+
+/* ── Start / End Nodes ───────────────────────────────────────────── */
+.wf-startend {
+  width: 100%;
+  background: #12263a;
+  color: white;
+  border-radius: 40px;
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  font-family: 'Space Grotesk', sans-serif;
+  box-sizing: border-box;
+}
+
+.wf-startend-label {
+  font-weight: 700;
+  font-size: 0.9rem;
+  letter-spacing: 0.05em;
+}
+
+.wf-startend-params {
+  font-size: 0.67rem;
+  opacity: 0.72;
+  text-align: center;
+}
