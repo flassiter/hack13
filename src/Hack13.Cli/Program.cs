@@ -1,6 +1,20 @@
 using Hack13.Contracts.Enums;
 using Hack13.Orchestrator;
+using Hack13.TerminalClient;
 
+// --- Quick connection-test mode ---
+if (args.Length > 0 && args[0] == "--test-connection")
+{
+    if (!TryParseTestConnectionArgs(args, out var tcHost, out var tcPort, out var tcTls,
+            out var tcCaCert, out var tcInsecure, out var tcTimeout))
+    {
+        PrintUsage();
+        return 1;
+    }
+    return await TlsConnectionTest.RunAsync(tcHost!, tcPort, tcTls, tcCaCert, tcInsecure, timeoutSeconds: tcTimeout);
+}
+
+// --- Normal workflow mode ---
 if (!TryParseArgs(args, out var workflowPath, out var parameters))
 {
     PrintUsage();
@@ -106,4 +120,55 @@ static void PrintUsage()
 {
     Console.WriteLine("Usage:");
     Console.WriteLine("  dotnet run --project src/Hack13.Cli -- --workflow <path> [--param key=value]...");
+    Console.WriteLine();
+    Console.WriteLine("  dotnet run --project src/Hack13.Cli -- --test-connection --host <host> --port <port> [--tls] [--ca-cert <path>] [--insecure] [--timeout <seconds>]");
+    Console.WriteLine("");
+    Console.WriteLine("  Example:");
+    Console.WriteLine("     dotnet run --project src/Hack13.Cli -- --test-connection --host CMHDVP2.CLAYTON.NET --port 992 --tls --ca-cert certs/ClaytonRootCA.pem --timeout 20");
+}
+
+static bool TryParseTestConnectionArgs(
+    string[] args,
+    out string? host,
+    out int port,
+    out bool useTls,
+    out string? caCertPath,
+    out bool insecureSkipVerify,
+    out int timeoutSeconds)
+{
+    host = null;
+    port = 23;
+    useTls = false;
+    caCertPath = null;
+    insecureSkipVerify = false;
+    timeoutSeconds = 15;
+
+    for (var i = 1; i < args.Length; i++) // skip args[0] which is --test-connection
+    {
+        switch (args[i])
+        {
+            case "--host" when i + 1 < args.Length:
+                host = args[++i];
+                break;
+            case "--port" when i + 1 < args.Length:
+                if (!int.TryParse(args[++i], out port)) return false;
+                break;
+            case "--tls":
+                useTls = true;
+                break;
+            case "--ca-cert" when i + 1 < args.Length:
+                caCertPath = args[++i];
+                break;
+            case "--insecure":
+                insecureSkipVerify = true;
+                break;
+            case "--timeout" when i + 1 < args.Length:
+                if (!int.TryParse(args[++i], out timeoutSeconds)) return false;
+                break;
+            default:
+                return false;
+        }
+    }
+
+    return !string.IsNullOrWhiteSpace(host);
 }

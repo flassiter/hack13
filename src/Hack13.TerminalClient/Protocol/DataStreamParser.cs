@@ -1,4 +1,3 @@
-using System.Net.Sockets;
 using Hack13.Contracts.Protocol;
 
 namespace Hack13.TerminalClient.Protocol;
@@ -19,7 +18,7 @@ public class DataStreamParser
     /// <summary>
     /// Reads one complete EOR-delimited record from the stream and parses it into the screen buffer.
     /// </summary>
-    public async Task<ScreenBuffer> ReadAndParseScreenAsync(NetworkStream stream, ScreenBuffer buffer, CancellationToken ct)
+    public async Task<ScreenBuffer> ReadAndParseScreenAsync(Stream stream, ScreenBuffer buffer, CancellationToken ct)
     {
         var data = await ReadEorFrameAsync(stream, null, ct);
         ParseRecord(data, buffer);
@@ -30,7 +29,7 @@ public class DataStreamParser
     /// Reads one complete EOR-delimited record from the stream, including any pre-read bytes.
     /// </summary>
     public async Task<ScreenBuffer> ReadAndParseScreenAsync(
-        NetworkStream stream,
+        Stream stream,
         ScreenBuffer buffer,
         byte[]? initialData,
         CancellationToken ct)
@@ -44,12 +43,12 @@ public class DataStreamParser
     /// Reads bytes from the stream until IAC EOR is encountered.
     /// Handles IAC IAC escaping (0xFF 0xFF -> single 0xFF).
     /// </summary>
-    public async Task<byte[]> ReadEorFrameAsync(NetworkStream stream, CancellationToken ct)
+    public async Task<byte[]> ReadEorFrameAsync(Stream stream, CancellationToken ct)
     {
         return await ReadEorFrameAsync(stream, null, ct);
     }
 
-    public async Task<byte[]> ReadEorFrameAsync(NetworkStream stream, byte[]? initialData, CancellationToken ct)
+    public async Task<byte[]> ReadEorFrameAsync(Stream stream, byte[]? initialData, CancellationToken ct)
     {
         using var frameBuffer = new MemoryStream();
         var readBuf = new byte[1024];

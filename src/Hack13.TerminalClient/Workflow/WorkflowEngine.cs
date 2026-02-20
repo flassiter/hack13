@@ -1,4 +1,6 @@
 using System.Net.Sockets;
+using System.Net.Security;
+using System.Security.Cryptography.X509Certificates;
 using Hack13.Contracts.Enums;
 using Hack13.Contracts.Protocol;
 using Hack13.Contracts.Models;
@@ -62,7 +64,45 @@ public class WorkflowEngine
             await client.ConnectAsync(host, port, connectCts.Token);
             Log(LogLevel.Info, null, "Connected, starting telnet negotiation");
 
-            using var stream = client.GetStream();
+            // Resolve the data stream: plain TCP or TLS
+            Stream stream = client.GetStream();
+            SslStream? sslStream = null;
+
+            if (_config.Connection.UseTls)
+            {
+                Log(LogLevel.Info, null, "Starting TLS handshake");
+                var sslOptions = new SslClientAuthenticationOptions
+                {
+                    TargetHost = host,
+                };
+
+                if (_config.Connection.InsecureSkipVerify)
+                {
+                    sslOptions.RemoteCertificateValidationCallback = (_, _, _, _) => true;
+                }
+                else if (!string.IsNullOrWhiteSpace(_config.Connection.CaCertificatePath))
+                {
+                    var caPath = PlaceholderResolver.Resolve(_config.Connection.CaCertificatePath, _parameters);
+                    var caCert = new X509Certificate2(caPath);
+                    var caCollection = new X509Certificate2Collection { caCert };
+                    sslOptions.RemoteCertificateValidationCallback = (_, cert, chain, errors) =>
+                    {
+                        if (errors == SslPolicyErrors.None) return true;
+                        if (cert == null || chain == null) return false;
+                        chain.ChainPolicy.TrustMode = X509ChainTrustMode.CustomRootTrust;
+                        chain.ChainPolicy.CustomTrustStore.AddRange(caCollection);
+                        return chain.Build(new X509Certificate2(cert));
+                    };
+                }
+
+                sslStream = new SslStream(client.GetStream(), leaveInnerStreamOpen: false);
+                await sslStream.AuthenticateAsClientAsync(sslOptions, ct);
+                stream = sslStream;
+                Log(LogLevel.Info, null, $"TLS established: {sslStream.SslProtocol}, {sslStream.CipherAlgorithm}");
+            }
+
+            try
+            {
 
             // Telnet negotiation
             var negotiator = new ClientTelnetNegotiator(stream,
@@ -113,6 +153,11 @@ public class WorkflowEngine
                 LogEntries = _logEntries,
                 DurationMs = sw.ElapsedMilliseconds
             };
+            }
+            finally
+            {
+                if (sslStream != null) await sslStream.DisposeAsync();
+            }
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
@@ -149,7 +194,7 @@ public class WorkflowEngine
         }
     }
 
-    private async Task<bool> ExecuteStepAsync(NetworkStream stream, WorkflowStep step, CancellationToken ct)
+    private async Task<bool> ExecuteStepAsync(Stream stream, WorkflowStep step, CancellationToken ct)
     {
         Log(LogLevel.Info, step.StepName, $"Executing {step.Type} step: {step.StepName}");
 
@@ -175,7 +220,7 @@ public class WorkflowEngine
         return false;
     }
 
-    private async Task<bool> ExecuteNavigateAsync(NetworkStream stream, WorkflowStep step, CancellationToken ct)
+    private async Task<bool> ExecuteNavigateAsync(Stream stream, WorkflowStep step, CancellationToken ct)
     {
         // Identify current screen to find field positions
         var currentScreen = _screenIdentifier.Identify(_screenBuffer);

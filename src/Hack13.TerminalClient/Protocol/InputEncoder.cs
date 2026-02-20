@@ -1,4 +1,3 @@
-using System.Net.Sockets;
 using Hack13.Contracts.Protocol;
 
 namespace Hack13.TerminalClient.Protocol;
@@ -81,7 +80,7 @@ public class InputEncoder
     /// <summary>
     /// Builds and sends an input record over the network stream.
     /// </summary>
-    public async Task SendInputAsync(NetworkStream stream, byte aidKey, int cursorRow, int cursorCol,
+    public async Task SendInputAsync(Stream stream, byte aidKey, int cursorRow, int cursorCol,
         IEnumerable<InputField> fields, CancellationToken ct)
     {
         var data = BuildInputRecord(aidKey, cursorRow, cursorCol, fields);
