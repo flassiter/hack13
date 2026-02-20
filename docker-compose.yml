@@ -31,6 +31,18 @@ services:
       - "3000:80"
       - "25:25"
 
+  db-migrate:
+    image: postgres:16-alpine
+    environment:
+      PGPASSWORD: hack13password
+    volumes:
+      - ./db/migrations:/migrations:ro
+    command: psql -h postgres -U hack13 -d hack13 -f /migrations/001_add_recovery_columns.sql
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
   api:
     build:
       context: .
@@ -59,8 +71,8 @@ services:
         condition: service_started
       smtp:
         condition: service_started
-      postgres:
-        condition: service_healthy
+      db-migrate:
+        condition: service_completed_successfully
     ports:
       - "5000:5000"
 
